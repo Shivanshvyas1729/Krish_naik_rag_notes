@@ -45,3 +45,8 @@ matplotlib
 jupyter
 ipykernel
 jupytext
+
+# Added per user request
+numpy
+scikit-learn
+pinecone
