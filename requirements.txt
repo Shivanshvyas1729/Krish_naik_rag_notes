@@ -50,3 +50,9 @@ jupytext
 numpy
 scikit-learn
 pinecone
+
+
+nbconvert
+ipywidgets
+
+
