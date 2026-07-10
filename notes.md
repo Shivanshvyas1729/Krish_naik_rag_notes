@@ -441,3 +441,29 @@ semantic_chunks = semantic_splitter.split_documents(documents)
 *   `SemanticChunker`: Splits documents based on semantic content shifts. It calculates embedding similarity between consecutive sentences and creates a boundary when similarity drops below a threshold.
 *   **Key Concept**: Far superior to fixed-size chunkers for preserving complete ideas/topics. However, it is computationally heavy.
 *   **Best Practice**: Use a lightweight, free local embedding model (like `all-MiniLM-L6-v2`) for the chunking calculation phase, and save API embeddings for final index storage.
+
+---
+
+## RAG Chain Types Comparison
+
+| Chain Type | Description | Key Features | Typical Use Cases |
+|------------|-------------|--------------|-------------------|
+| **Normal RAG Chain** | Retrieve a fixed set of top‑k documents, concatenate them, and pass the whole text to the LLM in a single prompt. | • Simple to implement<br>• No state across turns<br>• Limited by LLM context window | • One‑off Q&A<br>• Fact‑lookup where the answer fits in a single request |
+| **Conversational RAG Chain** | Extends the normal chain with a memory component (chat history) and a history‑aware retriever that rewrites the user query using the prior conversation. | • Maintains multi‑turn context<br>• Resolves pronouns and references<br>• Uses `create_history_aware_retriever` and `MessagesPlaceholder` | • Customer‑support bots<br>• Interactive tutoring with follow‑up questions |
+| **Streaming RAG Chain** | Retrieves documents incrementally and streams them to the LLM as they become available (e.g., using LangChain’s Runnable streaming or async generators). | • Handles very large corpora beyond the LLM token limit<br>• Overlaps retrieval and generation to reduce latency<br>• Can provide partial answers early | • Long‑form summarisation<br>• Real‑time assistance over massive knowledge bases |
+
+---
+
+## Vector Store vs Vector Database
+
+| Type | Persistence | Scaling | Metadata / Filtering | Typical Scenarios |
+|------|--------------|---------|----------------------|-------------------|
+| **In‑Memory Vector Store** (`InMemoryVectorStore`) | Pure Python dict, lives only while the process runs | Limited to a single process, RAM‑bound | Minimal – usually only the vector itself | Unit tests, quick prototypes, notebooks |
+| **Local Vector Store** (`FAISS`, `Chroma`) | Files on disk (`.index`, SQLite for Chroma) | Works on a single machine; can handle millions of vectors with appropriate hardware | Supports basic metadata filters (e.g., `metadata['source'] == 'pdf'`) | Personal projects, research notebooks, small‑scale apps |
+| **Managed Vector Database** (`Pinecone`, `Weaviate`, `Qdrant`, `Milvus Cloud`) | Cloud‑managed storage with replication & backups | Horizontally scalable, multi‑region, handles billions of vectors | Rich metadata queries, hybrid search (vector + scalar), security controls | Production SaaS products, multi‑tenant services, real‑time recommendation engines |
+
+*When to choose which:* 
+- **Prototype / Experiment** → start with **FAISS** or **Chroma** for speed and zero‑cost.
+- **Production with modest load** → **Chroma** persisted locally or a lightweight **Qdrant** instance.
+- **Enterprise‑grade, high‑throughput** → a managed service like **Pinecone** or **Weaviate** that offers SLA, automatic scaling, and fine‑grained metadata filtering.
+
