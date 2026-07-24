@@ -1,10 +1,217 @@
 # Krish_naik_rag_notes
+<details><summary>Rag</summary>
+Here are structured study notes based on the provided document about RAG:
+
+# Study Notes: Retrieval-Augmented Generation (RAG)
+
+## Core Concept
+
+**RAG (Retrieval-Augmented Generation)** is a technique that enhances AI language models by combining their text-generation capabilities with external knowledge retrieval.
+
+* **The Analogy:**
+* **Traditional LLM (Without RAG):** Like a student taking a *closed-book exam*. It can only answer based on the information it memorized during its initial training. If it doesn't know, it might guess (hallucinate) or say "I don't know."
+* **RAG-Enabled AI:** Like a student taking an *open-book exam*. It can look up specific, current, or specialized information from a "library" (external databases) before generating its answer.
 
 
 
-[1-2RAG (1).pdf](https://github.com/user-attachments/files/29892069/1-2RAG.1.pdf)
+---
 
-[5-Promptvsfinetunignvsrag.pdf](https://github.com/user-attachments/files/29892064/5-Promptvsfinetunignvsrag.pdf)
+## The 3 Core Components of RAG
+
+1. **[R]etrieval:** Finding relevant information. The system searches external sources (like a Vector Database) using similarity search to find data related to the user's query.
+2. **[A]ugmentation:** Enhancing the context. The retrieved data is combined with metadata (e.g., source tags like *"Source: Tesla Annual Report 2023"*) and added to the user's original prompt.
+3. **[G]eneration:** Producing the answer. The Large Language Model (LLM) reads the enriched context and generates a highly accurate, grounded response.
+
+---
+
+## RAG Architecture Workflow
+
+The process is broken down into three distinct phases:
+
+### Phase 1: Document Ingestion
+
+* **Data Sources:** Raw data (PDFs, Web Pages, Databases) is collected.
+* **Processing:** The data goes through a Document Splitter to break it into chunks.
+* **Embedding:** An Embedding Model converts text into mathematical vectors (e.g., `[0.31, -0.22, 0.85...]`).
+* **Storage:** These vectors are stored in a **Vector Database**.
+
+### Phase 2: Query Processing
+
+* The user submits a query (e.g., "What is RAG?").
+* The query is converted into an embedding.
+* The system performs a **Similarity Search** in the Vector Database to find the most relevant document chunks.
+
+### Phase 3: Generation
+
+* The relevant chunks are formatted as **Augmented Context**.
+* This context is fed into a **Large Language Model** (like GPT-4, Claude, or Llama).
+* The LLM synthesizes the information and outputs the **Generated Response**.
+
+---
+
+## Comparison: Traditional LLM vs. RAG (Customer Support Example)
+
+| Feature | Traditional LLM (Without RAG) | AI Assistant (With RAG) |
+| --- | --- | --- |
+| **Data Source** | Training data only | LLM + Vector Database |
+| **Response Type** | Generic, unhelpful, or outdated | Specific, actionable, and up-to-date |
+| **Example Output** | *"Generally, most companies offer 30-day returns, but policies may vary..."* | *"According to our current policy (v3.2), Black Friday purchases have an extended 60-day window..."* |
+
+---
+
+## Real-World Benefits & Business Impact
+
+* **Cost Savings:** Reduces the need for constant model retraining. *(Example: JPMorgan saved $150M annually by using RAG instead of fine-tuning models monthly).*
+* **Accuracy (Reducing Hallucinations):** Grounds the AI in actual facts. *(Example: Microsoft reported a 94% reduction in AI hallucinations in their Copilot products).*
+* **Flexibility & Real-Time Updates:** Can ingest live data instantly. *(Example: Bloomberg updates its financial AI assistant hourly with new market data, which is impossible with traditional LLMs).*
+* **Compliance & Sourcing:** Allows the AI to provide citations. *(Example: Healthcare companies use RAG to ensure AI responses always cite approved medical sources).*
+
+  [1-2RAG (1).pdf](https://github.com/user-attachments/files/29892069/1-2RAG.1.pdf)
+
+ </details>
+
+
+
+
+<details><summary>fine tunning vs rag </summary>
+Here are your structured notes based on the document. Since I cannot extract and embed the images directly from your local PDF, I have recreated the visual flow of each diagram using text-based flowcharts to ensure you have the complete picture.
+
+---
+
+# AI Customization Methods: A Beginner's Guide
+
+A comparison of the three primary ways to customize Large Language Models (LLMs): Prompt Engineering, Fine-tuning, and RAG.
+
+## 1. Prompt Engineering
+
+**Concept:** Teaching through instructions. The underlying AI model itself remains completely unchanged.
+
+### 📊 Diagram Flow
+
+```text
+[User Prompt: "Act as an expert chef..."] 
+                    ↓
+        [Base LLM (Remains Unchanged)] 
+                    ↓
+          [Customized Output]
+
+```
+
+### 📝 Key Details
+
+* **How it Works:**
+* Write specific instructions in your prompt.
+* Structure prompts with clear context.
+* Use examples (few-shot learning).
+
+
+* **Pros:**
+* No technical expertise needed.
+* Instant results.
+* Free (no training costs).
+* Highly flexible and works with any LLM.
+
+
+* **Cons:**
+* Strictly limited by the model's existing base knowledge.
+* Can yield inconsistent results.
+* Token limits restrict how complex you can make the prompt.
+* Cannot add new, permanent knowledge to the model.
+
+
+* **Best For:** Quick prototyping, small-scale applications, general-purpose tasks, and when you need maximum flexibility.
+
+---
+
+## 2. Fine-Tuning
+
+**Concept:** Teaching through training. It alters the model's permanent weights to create a specialized version of the original AI.
+
+### 📊 Diagram Flow
+
+```text
+[Base LLM (Original Weights)]  +  [Domain-Specific Training Data]
+                               ↓
+                            (Train)
+                               ↓
+        [Fine-Tuned LLM (Modified Weights / Specialized)]
+
+```
+
+### 📝 Key Details
+
+* **How it Works:**
+* Prepare domain-specific training data.
+* Train the base model on your data.
+* Model weights are permanently changed to create a specialized version.
+
+
+* **Pros:**
+* Creates deeply specialized knowledge and consistent behavior.
+* Eliminates the need for complex prompt engineering.
+* Can learn specific new writing styles.
+* Significantly better for highly specific domains.
+
+
+* **Cons:**
+* Expensive to execute (can cost $1000s – $10000s).
+* Requires Machine Learning (ML) expertise.
+* Needs complete retraining for any informational updates.
+* The model can sometimes "forget" general knowledge during training.
+
+
+* **Best For:** Highly specific writing styles or tones, domain-specific language, high-volume/consistent tasks, and situations where accuracy is critical.
+
+---
+
+## 3. RAG (Retrieval-Augmented Generation)
+
+**Concept:** Teaching through retrieval. It pulls in outside information in real-time to help the AI answer a query accurately.
+
+### 📊 Diagram Flow
+
+```text
+[User Query] ─────────────> [Vector Database / Knowledge Base]
+      ↓                                   ↓
+      └─────────> [Retrieved Relevant Documents]
+                                  ↓
+                              [Base LLM]
+                                  ↓
+                        [Augmented Response]
+
+```
+
+### 📝 Key Details
+
+* **How it Works:**
+* Store company documents or data in a Vector Database.
+* Retrieve relevant documents for each specific query.
+* Combine the retrieved documents with the query to serve as context.
+* The LLM generates an answer based strictly on that context.
+
+
+* **Pros:**
+* Always provides up-to-date information.
+* Requires no model training (highly cost-effective).
+* Can safely handle private or proprietary data.
+* High accuracy with reduced hallucination.
+
+
+* **Cons:**
+* Requires initial infrastructure setup (like Vector DBs).
+* The final result is heavily dependent on the quality of the retrieval step.
+* Context window limitations still apply.
+* Adds latency (delay) to the response time due to the retrieval step.
+
+
+* **Best For:** Knowledge bases and documentation, real-time or frequently updated info, customer support systems, and compliance-heavy industries.
+
+  [5-Promptvsfinetunignvsrag.pdf](https://github.com/user-attachments/files/29892064/5-Promptvsfinetunignvsrag.pdf)
+
+  </details>
+
+
+
 
 <details><summary>Vector store / vector databases</summary>Here are proper, structured notes based on the document:
 
