@@ -6,9 +6,92 @@
 
 [5-Promptvsfinetunignvsrag.pdf](https://github.com/user-attachments/files/29892064/5-Promptvsfinetunignvsrag.pdf)
 
+<details><summary>Vector store / vector databases</summary>Here are proper, structured notes based on the document:
+
+# Study Notes: Vector Stores vs. Vector Databases
+
+## The Golden Rule
+
+Start with a **Vector Store** for prototyping and learning. Graduate to a **Vector Database** when you need production-scale features, reliability, and advanced querying capabilities.
+
+---
+
+## 1. Vector Stores
+
+A lightweight library or tool focused on storing and searching vectors efficiently.
+
+### Key Characteristics
+
+* **Core Function:** Simple similarity search (finding the K nearest neighbors to a query vector).
+* **Architecture:** Usually runs in-memory or as a local file (single-machine operation).
+* **Scale:** Handles smaller datasets (< 1 million vectors).
+* **Speed:** Extremely fast query speed (Microseconds).
+* **Setup & Cost:** Quick to set up (Minutes), typically deployed locally, and usually free.
+
+### When to Use
+
+* Building a proof of concept (POC).
+* Working with less than 1 million vectors.
+* You need the absolute fastest possible search speed.
+* You have a limited budget or want full control over the implementation.
+* Building embedded applications.
+
+### Popular Examples
+
+* FAISS
+* Annoy
+* ChromaDB
+* ScaNN
+* NMSLIB
+
+---
+
+## 2. Vector Databases
+
+A full-featured database system designed for managing and querying vector data at scale.
+
+### Key Characteristics
+
+* **Core Function:** Advanced search (filters, metadata queries) and full database operations (CRUD: Create, Read, Update, Delete).
+* **Architecture:** Distributed system with replication, sharding, and high availability.
+* **Scale:** Built for massive datasets (Billions+ of vectors).
+* **Speed:** Slightly slower query speed due to overhead (Milliseconds).
+* **Setup & Cost:** Takes longer to set up (Hours/Days), usually cloud-deployed, and incurs costs ($$$).
+
+### When to Use
+
+* Building production and enterprise applications.
+* Need to scale beyond millions of vectors.
+* Require high availability and system reliability.
+* Need advanced filtering and metadata search alongside vector search.
+* Have multiple users/tenants accessing the data.
+* Want managed infrastructure rather than handling it locally.
+
+### Popular Examples
+
+* Pinecone
+* Weaviate
+* Qdrant
+* Milvus
+* Vespa
+* DataStax
+
+---
+
+## 3. Quick Reference Comparison
+
+| Feature | Vector Store | Vector Database |
+| --- | --- | --- |
+| **Scale** | ~1 Million vectors | Billions+ vectors |
+| **Setup Time** | Minutes | Hours/Days |
+| **Query Speed** | Microseconds | Milliseconds |
+| **Features** | Basic Search | Full CRUD & Metadata filtering |
+| **Deployment** | Local | Cloud |
+| **Cost** | Free | Paid ($$$) |
 [23-+Vector+store+vs+Vector+Databases.pdf](https://github.com/user-attachments/files/29892056/23-%2BVector%2Bstore%2Bvs%2BVector%2BDatabases.pdf)
 
-[33-Semantic+Chunking.pdf](https://github.com/user-attachments/files/29892074/33-Semantic%2BChunking.pdf)
+</details>
+
 
 
 Semantic Chunking is a text-splitting technique that divides content based on meaning instead of fixed size or paragraphs.
@@ -50,6 +133,8 @@ Given the input text:
 * **Chunk 1:** `["LangChain is a framework...", "It integrates with tools..."]` *(Merged because both discuss LangChain/LLMs)*
 * **Chunk 2:** `["The Eiffel Tower is located in Paris."]`
 * **Chunk 3:** `["France is a popular tourist destination."]`
+
+  [33-Semantic+Chunking.pdf](https://github.com/user-attachments/files/29892074/33-Semantic%2BChunking.pdf)
 </details>
 
 
