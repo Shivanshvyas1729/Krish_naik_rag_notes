@@ -381,7 +381,8 @@ Hybrid search calculates a final score by combining the dense and sparse scores 
 **The Equation:**
 
 
-$$\text{Score}_{\text{hybrid}} = \alpha \times \text{Score}_{\text{dense}} + (1 - \alpha) \times \text{Score}_{\text{sparse}}$$
+<img width="473" height="52" alt="image" src="https://github.com/user-attachments/assets/c6907f64-3fb2-494b-81c6-e3effa9d8ab7" />
+
 
 **Where:**
 
