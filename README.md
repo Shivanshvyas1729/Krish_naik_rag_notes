@@ -630,7 +630,7 @@ $$\text{Better Query} \longrightarrow \text{Better Retrieved Chunks} \longrighta
 
 
 <details><summary>Query Decomposition</summary>
-Here are structured notes based on the **Query Decomposition** document:
+ **Query Decomposition** :
 
 ---
 
@@ -684,7 +684,7 @@ Here are structured notes based on the **Query Decomposition** document:
 
 
 <details><summary>HyDE Technique</summary>
-Here are structured notes based on the **Hypothetical Document Embeddings (HyDE)** document:
+**Hypothetical Document Embeddings (HyDE)** :
 
 ---
 
