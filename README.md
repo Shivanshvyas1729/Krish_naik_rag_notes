@@ -1,6 +1,6 @@
 # Krish_naik_rag_notes
 <details><summary>Rag</summary>
-Here are structured study notes based on the provided document about RAG:
+
 
 # Study Notes: Retrieval-Augmented Generation (RAG)
 
@@ -74,7 +74,7 @@ The process is broken down into three distinct phases:
 
 
 <details><summary>fine tunning vs rag </summary>
-Here are your structured notes based on the document. Since I cannot extract and embed the images directly from your local PDF, I have recreated the visual flow of each diagram using text-based flowcharts to ensure you have the complete picture.
+
 
 ---
 
@@ -213,7 +213,7 @@ A comparison of the three primary ways to customize Large Language Models (LLMs)
 
 
 
-<details><summary>Vector store / vector databases</summary>Here are proper, structured notes based on the document:
+<details><summary>Vector store / vector databases</summary>
 
 # Study Notes: Vector Stores vs. Vector Databases
 
@@ -302,7 +302,9 @@ A full-featured database system designed for managing and querying vector data a
 
 
 Semantic Chunking is a text-splitting technique that divides content based on meaning instead of fixed size or paragraphs.
-<details><summary>sementic chunking </summary>Here is a summary of the provided document on **Semantic Chunking**:
+<details><summary>sementic chunking </summary>
+  
+**Semantic Chunking**:
 
 ## Overview
 
@@ -347,7 +349,7 @@ Given the input text:
 
 
 <details><summary>Dense+Sparse retrival</summary>
-Here are the structured notes based on the document you shared:
+
 
 ## Hybrid Search Strategies: Dense & Sparse Retrieval
 
@@ -488,7 +490,7 @@ The workflow is divided into three distinct stages:
 
 <details><summary>MMR (Maximal Marginal Relevance )</summary>
 
-Here are your organized notes based on the document provided:
+
 
 # Hybrid Search Strategies: Maximal Marginal Relevance (MMR)
 
@@ -573,4 +575,165 @@ $$\text{MMR}(D3) = (0.7 \cdot 0.80) - (0.3 \cdot 0.30) = 0.560 - 0.090 = \mathbf
 | **Precision Only** | When you are strictly focused on accuracy and do not care about topic coverage. |
 | **Pre-existing Diversity** | If the source documents are already inherently diverse. |
 | **LLM Reranking** | If redundancy is already being handled downstream by an LLM post-filter or reranker. |
+</details>
+
+
+<details><summary>Query Expansion Technique </summary>
+
+ **Query Expansion Technique** :
+
+---
+
+## 📌 Overview: Query Enhancement
+
+In a Retrieval-Augmented Generation (**RAG**) pipeline, the quality of the user query directly dictates the context retrieved, which in turn determines the accuracy of the LLM's final response.
+
+> **Query Enhancement / Expansion** is the technique of refining, reformulating, or expanding an initial user query before sending it to the retriever to ensure higher-quality context retrieval.
+
+---
+
+## 🎯 When to Use Query Expansion
+
+* **Short/Under-specified Queries:** When the initial prompt lacks context or depth.
+* **Ambiguous Prompts:** When keywords have multiple potential interpretations.
+* **Broader Scope:** To capture synonyms, related domain concepts, and common spelling variants.
+
+---
+
+## 🔄 Query Expansion Examples
+
+| Original Query | Enhanced Query |
+| --- | --- |
+| `"LangChain memory"` | `"LangChain memory modules, conversation memory"` |
+| `"tools in LLM"` | `"LangChain tools, APIs, calculator, agent tools"` |
+| `"retrieval"` | `"vector retrieval, dense search, BM25, MMR"` |
+
+---
+
+## ⚡ The Chain Reaction
+
+$$\text{Better Query} \longrightarrow \text{Better Retrieved Chunks} \longrightarrow \text{Better Grounded LLM Answers}$$
+
+---
+
+## 🏗️ Query Expansion Workflow / Architecture
+
+1. **Input Query:** The raw user input is received.
+2. **Query Enhancement Step:** An internal LLM with a specific prompt (or chain execution) expands/refines the original query into an enhanced version.
+3. **Retriever:** The enhanced query is sent to the **Vector Store** / Retriever (e.g., using **FAISS** or **Hybrid Search**).
+4. **Top-K Documents:** The retriever returns the initial top $k$ relevant chunks.
+5. **Re-Ranker:** Re-ranks the retrieved top $k$ documents to ensure the most relevant context is prioritized.
+6. **Final LLM Output:** The ordered context is passed to the LLM to generate the final output.
+7.
+8. <img width="611" height="538" alt="image" src="https://github.com/user-attachments/assets/4e5c34d0-9ec2-4a37-a2d8-406faf767fec" />
+</details>
+
+
+<details><summary>Query Decomposition</summary>
+Here are structured notes based on the **Query Decomposition** document:
+
+---
+
+## 📌 Query Enhancement: Query Decomposition
+
+### 1. What is Query Decomposition?
+
+**Query Decomposition** is the technique of taking a complex, multi-part user question and breaking it down into simpler, atomic sub-questions that can be retrieved and answered individually.
+
+---
+
+### 2. Why Use Query Decomposition?
+
+* **Handles Multi-Concept Queries:** Complex user requests often combine multiple topics that a single retrieval step might miss.
+* **Improves Retrieval Accuracy:** LLMs or standard retrievers can overlook parts of a long or dense prompt.
+* **Enables Multi-Hop Reasoning:** Allows answering complex questions step-by-step.
+* **Supports Parallel Processing:** Sub-questions can be processed in parallel across multiple retrievers or agents (especially within multi-agent frameworks).
+
+---
+
+### 3. How It Works (Workflow Breakdown)
+
+1. **User Query Input:** A complex query is received (e.g., *"What memory modules does LangChain support and how are they different from CrewAI Agents?"*).
+2. **Decomposition Layer:**
+* Uses **LLM + Prompting** or **Regex / Rule-based Operations** to split the main query into smaller sub-queries:
+* **Sub-Query 1:** *What memory modules does LangChain support?*
+* **Sub-Query 2:** *What memory modules/agents does CrewAI support?*
+* **Sub-Query 3:** *LangChain memory vs. CrewAI agents.*
+
+
+
+
+3. **Retrieval & LLM Calls (Parallel/Sequential):**
+* Each sub-query goes to a **Retriever** to gather relevant context (**Top-K Context**).
+* Each context + prompt is passed to an **LLM** to generate sub-answers ($O_1, O_2, O_3$).
+
+
+4. **Answer Synthesis:**
+* An **Answer Combiner / Synthesizer** merges $O_1, O_2,$ and $O_3$ into a single, cohesive **Final Answer**.
+
+
+
+---
+
+### 4. Major Disadvantage ⚠️
+
+* **Increased Latency & Cost:** Performing multiple retrieval steps and several LLM calls per user request significantly increases processing time and API token usage.
+  <img width="638" height="545" alt="image" src="https://github.com/user-attachments/assets/d07990de-cf22-4c1d-9f33-b03ef3513c14" />
+  
+</details>
+
+
+<details><summary>HyDE Technique</summary>
+Here are structured notes based on the **Hypothetical Document Embeddings (HyDE)** document:
+
+---
+
+# Study Notes: Hypothetical Document Embeddings (HyDE)
+
+## 1. What is HyDE?
+
+**HyDE (Hypothetical Document Embeddings)** is an advanced retrieval-augmented generation (RAG) technique. Instead of embedding a user's raw query directly into a vector space, HyDE uses an LLM to first generate a **hypothetical answer (document)**, and then embeds that generated document to search the vector database.
+
+* **Core Goal:** Bridge the semantic gap between how users ask questions and how information is phrased in source documents.
+
+---
+
+## 2. When to Use HyDE
+
+HyDE is especially useful when:
+
+* **Short Queries:** The user's input lacks rich context or detail.
+* **Language/Phrasing Mismatch:** The vocabulary in the question differs significantly from the phrasing in the target documents.
+* **Answer-Centric Retrieval:** You need to retrieve content based on what an **answer** looks like rather than matching question keywords.
+
+---
+
+## 3. How HyDE Works (Workflow)
+
+```text
+[ User Query ] ──► [ LLM ] ──► [ Hypothetical Answer ] ──► [ Embedding Model ]
+                                                                   │
+[ Final Output ] ◄── [ LLM ] ◄── [ Top-K Docs ] ◄── [ Vector Retriever ]
+
+```
+
+1. **Query Input:** User provides a query.
+2. **Hypothetical Generation:** An LLM generates a plausible (hypothetical) response to the query.
+3. **Vector Embedding:** The hypothetical response is converted into a vector embedding.
+4. **Retrieval:** The vector database retrieves the **Top-K** actual documents matching the hypothetical embedding.
+5. **RAG Completion:** The retrieved ground-truth documents are passed to the LLM to form the final accurate answer.
+
+---
+
+## 4. Problem vs. Solution & Key Benefits
+
+| Feature / Problem | How HyDE Helps |
+| --- | --- |
+| **Vocabulary Mismatch** | Embeds answer-style structure rather than search keywords. |
+| **Vague Queries** | LLM-generated hypothetical content adds rich semantic context. |
+| **Target Representation** | Models what a relevant document is likely to look like. |
+| **Zero-Shot Retrieval** | Delivers strong retrieval performance without task-specific retraining. |
+| **Plug-and-Play** | Easy to integrate with existing providers (e.g., OpenAI, Cohere, Hugging Face). |
+<img width="515" height="231" alt="image" src="https://github.com/user-attachments/assets/26307b0f-6aa7-4595-a621-41db55476ab7" />
+
 </details>
