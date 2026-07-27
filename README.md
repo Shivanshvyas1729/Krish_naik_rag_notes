@@ -580,9 +580,9 @@ $$\text{MMR}(D3) = (0.7 \cdot 0.80) - (0.3 \cdot 0.30) = 0.560 - 0.090 = \mathbf
 
 <details><summary>Query Expansion Technique </summary>
 
- **Query Expansion Technique** :
+ **Query Expansion Technique** 
 
----
+
 
 ## 📌 Overview: Query Enhancement
 
@@ -630,7 +630,8 @@ $$\text{Better Query} \longrightarrow \text{Better Retrieved Chunks} \longrighta
 
 
 <details><summary>Query Decomposition</summary>
- **Query Decomposition** :
+  
+ **Query Decomposition** 
 
 ---
 
