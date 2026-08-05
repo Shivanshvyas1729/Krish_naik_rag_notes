@@ -775,17 +775,28 @@ query_rag_lcel("What are the key concepts in reinforcement learning?")
 ```
 
 #### 3. Conversational RAG Chain (With History/Memory)
-# Document Retrival & Chain Construction
+
+##### Imports
+```python
+# Document Retrieval & Chain Construction
 from langchain.chains import create_history_aware_retriever, create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 
 # Local Vector Database & Embeddings
 from langchain_chroma import Chroma
 from langchain_openai import OpenAIEmbeddings
+
+# Prompts & Messages
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.messages import HumanMessage, AIMessage
+from langchain.chat_models import init_chat_model
 ```
 
-#### How to Use (Conversational RAG with Chat History)
+##### Full Execution Code
 ```python
+# Initialize empty chat history list
+chat_history = []
+
 # 1. Setup Vector Store Retriever & LLM
 embedding = OpenAIEmbeddings(model="text-embedding-3-small")
 vector_store = Chroma(persist_directory="./chroma_db", embedding_function=embedding)
@@ -793,7 +804,7 @@ retriever = vector_store.as_retriever(search_kwargs={"k": 3})
 
 llm = init_chat_model("gpt-4o-mini", model_provider="openai")
 
-# 2. Contextualize Question Prompt
+# 2. Contextualize Question Prompt (Reformulates question using history context)
 contextualize_q_system_prompt = """Given a chat history and the latest user question 
 which might reference context in the chat history, formulate a standalone question 
 which can be understood without the chat history. Do NOT answer the question, 
@@ -830,20 +841,22 @@ conversational_rag_chain = create_retrieval_chain(
     history_aware_retriever, 
     question_answer_chain
 )
+
+# Turn 1: Initial Question
 result1 = conversational_rag_chain.invoke({
     "chat_history": chat_history,
     "input": "What is machine learning?"
 })
 print(f"Q: What is machine learning?")
-print(f"A: {result1['answer']}")
+print(f"A: {result1['answer']}\n")
 
 # Update history
 chat_history.extend([
-    HumanMessage(content="What is machine learning"),
+    HumanMessage(content="What is machine learning?"),
     AIMessage(content=result1['answer'])
 ])
 
-# Follow-up question (refers to ML from previous question)
+# Turn 2: Follow-up question (refers to ML from previous question)
 result2 = conversational_rag_chain.invoke({
     "chat_history": chat_history,
     "input": "What are its main types?"
@@ -1151,46 +1164,60 @@ results = hybrid_retriever.invoke("How can I build an application using LLMs?")
 ### 11.2 Re-ranking Hybrid Search Strategies (`2-reranking (1).ipynb`)
 #### Imports
 ```python
-from langchain_community.document_loaders import TextLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores import FAISS
-from langchain_huggingface import HuggingFaceEmbeddings
+# Industry Standard Reranking using ContextualCompressionRetriever
+from langchain.retrievers import ContextualCompressionRetriever
+from langchain.retrievers.document_compressors import CrossEncoderReranker
+from langchain_community.cross_encoders import HuggingFaceCrossEncoder
+from langchain_chroma import Chroma
 from langchain_openai import OpenAIEmbeddings
-from langchain.chat_models import init_chat_model
-from langchain_core.prompts import PromptTemplate
-from langchain_core.documents import Document
-from langchain_core.output_parsers import StrOutputParser
 ```
-#### How to Use
+
+#### How to Use (Standard 2-Stage Reranking Pipeline)
+
+##### Method A: Cross-Encoder Reranker (Industry Standard & Fastest)
 ```python
-# Stage 1: Fast initial retrieval (Fetch top-k=8 candidate docs)
-retriever = vectorstore.as_retriever(search_kwargs={"k": 8})
-retrieved_docs = retriever.invoke("How can I use LangChain with memory?")
+# Stage 1: Base Retriever (High Recall - fetch top 10 candidates)
+base_retriever = vectorstore.as_retriever(search_kwargs={"k": 10})
 
-# Stage 2: Re-ranking via LLM / Cross-Encoder
-prompt = PromptTemplate.from_template("""
-You are a helpful assistant. Rank the following documents from most to least relevant to the user's question.
+# Stage 2: Cross-Encoder Reranker Model (High Precision - re-rank and pick top 3)
+model = HuggingFaceCrossEncoder(model_name="BAAI/bge-reranker-base")
+compressor = CrossEncoderReranker(model=model, top_n=3)
 
-User Question: "{question}"
+# Combine into 2-Stage Compression Retriever
+rerank_retriever = ContextualCompressionRetriever(
+    base_compressor=compressor, 
+    base_retriever=base_retriever
+)
 
-Documents:
-{documents}
+# Fetch top-3 re-ranked documents with high accuracy
+reranked_docs = rerank_retriever.invoke("How can I use LangChain with memory?")
+```
 
-Return a list of document indices in ranked order starting from the most relevant.
-Output format: comma-separated document indices (e.g., 2,1,4,3)
+##### Method B: Simple LLM-based Reranker (No Extra Local Models Needed)
+```python
+# 1. Fetch initial candidate chunks
+candidates = base_retriever.invoke(query)
+
+# 2. Ask LLM to pick the top 3 most relevant documents directly
+rerank_prompt = ChatPromptTemplate.from_template("""
+Given the user question: "{question}"
+Select the top 3 most relevant text chunks from the candidates below.
+
+Candidates:
+{candidates}
+
+Return ONLY the text of the top 3 relevant chunks separated by '---'.
 """)
 
-chain = prompt | llm | StrOutputParser()
-formatted_docs = "\n".join([f"{i+1}. {doc.page_content}" for i, doc in enumerate(retrieved_docs)])
-response = chain.invoke({"question": query, "documents": formatted_docs})
-
-# Parse indices and re-order documents
-indices = [int(x.strip()) - 1 for x in response.split(",") if x.strip().isdigit()]
-reranked_docs = [retrieved_docs[i] for i in indices if 0 <= i < len(retrieved_docs)]
+rerank_chain = rerank_prompt | llm | StrOutputParser()
+formatted_candidates = "\n\n".join([f"[{i+1}] {d.page_content}" for i, d in enumerate(candidates)])
+top_context = rerank_chain.invoke({"question": query, "candidates": formatted_candidates})
 ```
+
 #### What They Do
-*   **Two-Stage Retrieval**: Stage 1 prioritizes **high recall** (fetching a large initial set of candidate chunks quickly). Stage 2 prioritizes **high precision** (using a slower, more powerful model to filter out irrelevant context).
-*   **LLM / Cross-Encoder Reranker**: Evaluates joint context between query and documents to eliminate false-positive vector hits before passing final context to the answer generator.
+*   `ContextualCompressionRetriever`: LangChain wrapper that takes a base retriever (Stage 1 high-recall search) and wraps it with a compressor/reranker (Stage 2 high-precision filter).
+*   `CrossEncoderReranker` / `BAAI/bge-reranker-base`: Evaluates the query and candidate chunk jointly to assign a true relevance score, re-ordering chunks and keeping only `top_n=3`.
+*   **Why 2-Stage Retrieval?**: Standard vector search can miss subtle nuances or return false positives. Reranking ensures only the single highest-quality context reaches the LLM context window.
 
 ---
 
