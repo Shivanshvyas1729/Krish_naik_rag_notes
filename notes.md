@@ -49,11 +49,42 @@
 ## 1. Data Ingestion & Splitting (`1-dataingestion.ipynb`)
 ### Imports
 ```python
+import tempfile
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter, CharacterTextSplitter, TokenTextSplitter
 from langchain_community.document_loaders import TextLoader, DirectoryLoader
 ```
+
+<details>
+<summary><b>💡 Helper Pattern: Programmatically Generating Temporary Sample Files</b></summary>
+
+When testing loaders (like `DirectoryLoader`) without cluttering your project folder with hardcoded files, you can create temporary files using Python's `tempfile` module:
+
+```python
+import tempfile
+
+# 1. Create temporary directory
+temp_dir = tempfile.mkdtemp()
+
+sample_docs = [
+    "Artificial Intelligence (AI) is transforming industries.",
+    "Machine Learning is a subset of AI focusing on data and algorithms.",
+    "Retrieval-Augmented Generation (RAG) enhances LLMs with dynamic external retrieval."
+]
+
+# 2. Write sample documents to temporary files
+for i, doc in enumerate(sample_docs):
+    with open(f"{temp_dir}/doc_{i}.txt", "w") as f:
+        f.write(doc)
+
+print(f"Sample documents created in: {temp_dir}")
+```
+*   **Why use this?** Ideal for unit tests, notebooks, and quick experiments because it creates a isolated sandbox directory that can be safely discarded later.
+</details>
+
 ### How to Use
+
+#### Single File Loading (`TextLoader`)
 ```python
 # Load single text file and split recursively
 loader = TextLoader("data/sample.txt")
@@ -67,8 +98,22 @@ text_splitter = RecursiveCharacterTextSplitter(
 )
 chunks = text_splitter.split_documents(documents)
 ```
+
+#### Bulk Folder Ingestion (`DirectoryLoader`)
+```python
+# Bulk load all matching text files from a directory path
+dir_loader = DirectoryLoader(
+    path=temp_dir,          # Directory path containing documents (e.g., "data/" or temp_dir)
+    glob="*.txt",           # File pattern matching
+    loader_cls=TextLoader,  # Underlying loader class used for each file
+    show_progress=True      # Show progress bar during bulk loading
+)
+bulk_documents = dir_loader.load()
+```
+
 ### What They Do
 *   `Document`: LangChain's base class storing raw text (`page_content`) and arbitrary key-value dict metadata (`metadata`).
+*   `DirectoryLoader`: Scans a directory for matching files (`glob="*.txt"`) and loads them concurrently using a specified single-file loader (`loader_cls=TextLoader`).
 *   `RecursiveCharacterTextSplitter`: <mark style="background-color: #d4edda; color: #155724; padding: 2px 4px; border-radius: 4px;">Best default splitter</mark>. Recursively splits text using a hierarchy of separators (`\n\n`, `\n`, `" "`, `""`) to keep paragraphs and sentences visually intact.
 *   `CharacterTextSplitter`: Splits text rigidly based on a single character separator (e.g. `\n\n`), risking oversized chunks if separators are far apart.
 *   `TokenTextSplitter`: Splits text strictly by token count (using OpenAI `tiktoken`) to guarantee chunk sizes fit exact LLM context boundaries.
@@ -222,24 +267,60 @@ docs = loader.load()
 <br>
 
 ## 7. Embedding Models (`7.0-embedding.ipynb` & `7.1-openaiembeddings.ipynb`)
+### 🔑 Setting up API Keys for Cloud Embedding Models (e.g., OpenAI)
+
+To use API-based embedding models like `OpenAIEmbeddings`, you need to set up your API key. There are two primary methods:
+
+#### Method 1: Using `.env` File (Recommended Best Practice)
+1. Install `python-dotenv`:
+   ```bash
+   pip install python-dotenv
+   ```
+2. Create a `.env` file in your root project directory:
+   ```env
+   OPENAI_API_KEY="your-actual-openai-api-key-here"
+   ```
+3. Load the environment variable in Python:
+   ```python
+   import os
+   from dotenv import load_dotenv
+
+   load_dotenv()  # Automatically loads OPENAI_API_KEY into os.environ
+   ```
+
+#### Method 2: Passing directly in Constructor
+```python
+import os
+from langchain_openai import OpenAIEmbeddings
+
+openai_embeddings = OpenAIEmbeddings(
+    model="text-embedding-3-small",
+    api_key="your-actual-openai-api-key-here" # Or os.getenv("OPENAI_API_KEY")
+)
+```
+
 ### Imports
 ```python
+import os
+from dotenv import load_dotenv
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_openai import OpenAIEmbeddings
+
+load_dotenv()
 ```
 ### How to Use
 ```python
-# Local HuggingFace Embeddings
+# Local HuggingFace Embeddings (No API Key Required - Runs Locally)
 hf_embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 vector_query = hf_embeddings.embed_query("your query text")
 
-# API-Based OpenAI Embeddings
+# API-Based OpenAI Embeddings (Requires OPENAI_API_KEY)
 openai_embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 vector_docs = openai_embeddings.embed_documents(["doc chunk 1", "doc chunk 2"])
 ```
 ### What They Do
-*   `HuggingFaceEmbeddings`: Generates vector representations locally ($0 API cost) using open-source models like `all-MiniLM-L6-v2`. Use `model_kwargs={'device': 'cuda'}` for GPU acceleration.
-*   `OpenAIEmbeddings`: Generates high-quality semantic vectors via the OpenAI API. Use the newer `text-embedding-3-small` model (cheaper and supports custom output dimension reduction).
+*   `HuggingFaceEmbeddings`: Generates vector representations locally ($0 API cost, no API Key needed) using open-source models like `all-MiniLM-L6-v2`. Use `model_kwargs={'device': 'cuda'}` for GPU acceleration.
+*   `OpenAIEmbeddings`: Generates high-quality semantic vectors via the OpenAI API (Requires `OPENAI_API_KEY`). Use the newer `text-embedding-3-small` model (cheaper and supports custom output dimension reduction).
 *   **Key Methods**:
     *   `embed_documents(list_of_texts)`: Embeds multiple document chunks (indexing phase).
     *   `embed_query(single_text)`: Embeds the user query (search phase).
@@ -319,15 +400,13 @@ class ChromaVectorStoreManager:
         """
         Creates a Chroma vector store from document chunks and saves it locally to disk.
         """
-        # 🔹 KEY OPERATOR: from_documents() builds index + generates vectors on disk
+        # 🔹 KEY OPERATOR: from_documents() builds index + automatically persists vectors on disk
         db = Chroma.from_documents(
             chunks,
             self.embedding,
             persist_directory=self.persitent_dir
         )
-        
-        # 🔹 PERSISTENCE: Save SQLite + Vector index state locally
-        db.persist()
+        # Note: db.persist() is deprecated & removed in newer Chroma releases because data is auto-saved
         return db
 
     def load_vector_store(self):
@@ -346,10 +425,13 @@ class ChromaVectorStoreManager:
 # 3. Vector search -> loaded_db.similarity_search("What is RAG?", k=3)
 ```
 
+> [!NOTE]
+> **Is `db.persist()` still used in current Chroma / LangChain?**
+> **No! `db.persist()` is DEPRECATED and REMOVED in `chromadb` (v0.4.0+) & `langchain-chroma`.**
+> Modern Chroma automatically persists vectors and metadata to disk whenever you pass `persist_directory`. Calling `db.persist()` manually in modern versions will throw an `AttributeError`.
 
 #### Core Methods Breakdown
-*   `Chroma.from_documents(chunks, self.embedding, persist_directory=self.persitent_dir)`: Embeds document chunks and saves indexed vectors into the specified persistent disk directory.
-*   `db.persist()`: Forces writing/flushing any remaining vectors and metadata to disk storage.
+*   `Chroma.from_documents(chunks, self.embedding, persist_directory=self.persitent_dir)`: Embeds document chunks and automatically saves/indexes vectors into the specified persistent disk directory.
 *   `Chroma(persist_directory=self.persitent_dir, embedding_function=self.embedding)`: Re-instantiates and loads the saved vector store from disk without re-embedding text chunks.
 *   `db.similarity_search(query, k=3)`: Retrieves top-k relevant document chunks based on vector closeness.
 
