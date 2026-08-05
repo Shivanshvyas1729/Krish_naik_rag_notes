@@ -595,19 +595,47 @@ class PineconeVectorStoreManager:
 ---
 
 ### 4. InMemoryVectorStore (`langchain_core.vectorstores.InMemoryVectorStore`)
-Simplest zero-dependency transient vector store built directly into `langchain-core`. Vectors are stored in Python memory and lost when the application finishes running.
+`InMemoryVectorStore` is the simplest zero-dependency transient vector store provided natively by `langchain-core` (LangChain 0.2+ standard). It stores vectors in a plain Python dictionary in memory (RAM).
 
+#### Imports
 ```python
 from langchain_core.vectorstores import InMemoryVectorStore
 from langchain_openai import OpenAIEmbeddings
+```
 
-# Create In-Memory Vector Store
-embedding = OpenAIEmbeddings()
-db = InMemoryVectorStore.from_documents(chunks, embedding)
+#### Basic Usage (In-Memory Execution)
+```python
+embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 
-# Query In-Memory Vector Store
+# Create store in RAM
+db = InMemoryVectorStore.from_documents(chunks, embeddings)
+
+# Query store
 results = db.similarity_search("Explain vector embeddings", k=2)
 ```
+
+#### 💾 Can you Save & Load `InMemoryVectorStore` to/from Disk?
+By default, `InMemoryVectorStore` data is lost when Python exits. However, because it is a pure Python object, **you CAN serialize it to disk** (save) and reload it later using Python's `pickle` or custom JSON dumping!
+
+##### Save & Load using `pickle` (File Dump):
+```python
+import pickle
+
+# 1. Save (Dump) in-memory vector store to disk
+with open("in_memory_store.pkl", "wb") as f:
+    pickle.dump(db, f)
+
+# 2. Load (Restore) in-memory vector store from disk
+with open("in_memory_store.pkl", "rb") as f:
+    loaded_db = pickle.load(f)
+
+# Query loaded store
+results = loaded_db.similarity_search("What is RAG?", k=2)
+```
+
+> [!TIP]
+> **When to use `InMemoryVectorStore`?**
+> Ideal for **unit testing (CI/CD)**, short interactive demo scripts, or single session apps where you don't want external database binaries installed on your system.
 
 ---
 
