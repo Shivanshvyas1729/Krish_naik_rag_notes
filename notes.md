@@ -1115,7 +1115,24 @@ print(result)
 
 ## 11. Hybrid Search & Re-ranking (`05_hybrid search`)
 
+### 🧠 Section Overview: Why Do We Need Hybrid Search & Re-ranking?
+Standard vector search (Dense Retrieval) relies purely on embedding distances (e.g. Cosine similarity). However:
+- Vector search often fails on **exact keyword queries**, technical IDs, acronyms, and proper nouns (e.g., searching `"SKU-9921"` or `"Error 404"`).
+- Vector search often returns **duplicate or near-identical text chunks** that fill up the LLM context window without adding new information.
+- Vector search can return **false-positive semantically similar chunks** that don't actually answer the prompt.
+
+**Solution**: We use **Hybrid Search** (Dense + Sparse BM25), **MMR** (Relevance + Diversity), and **Re-ranking** (2-Stage Cross-Encoder scoring) to achieve production-grade precision and recall.
+
+---
+
 ### 11.1 Hybrid Retriever – Dense & Sparse Combination (`1-densesparse.ipynb`)
+
+#### 🎯 Why We Need This:
+Neither vector search nor keyword search is perfect on its own. Hybrid retrieval combines both to get the "best of both worlds":
+* **Dense Retriever (Vector Embeddings)**: Captures conceptual meaning, intent, synonyms, and context matching.
+* **Sparse Retriever (BM25 Keyword Search)**: Captures exact word matches, codes, names, and rare technical terminology.
+* **EnsembleRetriever (RRF)**: Merges scores from both retrievers using Reciprocal Rank Fusion (RRF).
+
 #### Imports
 ```python
 from langchain_community.vectorstores import FAISS
@@ -1128,6 +1145,7 @@ from langchain_core.prompts import PromptTemplate
 from langchain_classic.chains.combine_documents import create_stuff_documents_chain
 from langchain_classic.chains.retrieval import create_retrieval_chain
 ```
+
 #### How to Use
 ```python
 # 1. Sample documents & Dense Retriever (FAISS + HuggingFace)
@@ -1153,6 +1171,7 @@ hybrid_retriever = EnsembleRetriever(
 # 4. Invoke hybrid search or connect to RAG chain
 results = hybrid_retriever.invoke("How can I build an application using LLMs?")
 ```
+
 #### What They Do
 *   `Dense Retriever`: Uses vector embeddings to capture semantic context, handling synonyms and concept matching.
 *   `Sparse Retriever` (`BM25`): Uses keyword-based frequency scoring (TF-IDF family) to catch exact term matches, proper nouns, and technical IDs.
@@ -1162,6 +1181,14 @@ results = hybrid_retriever.invoke("How can I build an application using LLMs?")
 ---
 
 ### 11.2 Re-ranking Hybrid Search Strategies (`2-reranking (1).ipynb`)
+
+#### 🎯 Why We Need This:
+Vector similarity search is fast, but it is **not always precise**. It evaluates candidate chunks independently against the query without understanding full cross-attention. 
+
+**2-Stage Reranking Architecture**:
+1. **Stage 1 (High Recall)**: Rapidly fetch a large candidate pool of chunks (e.g. `k=10` or `k=20`) from the Vector DB.
+2. **Stage 2 (High Precision)**: Run a specialized **Cross-Encoder model** (e.g. `bge-reranker-base`) or LLM over the candidates to re-evaluate query-document pair context and return only the top 3 strictly relevant chunks.
+
 #### Imports
 ```python
 # Industry Standard Reranking using ContextualCompressionRetriever
@@ -1222,6 +1249,14 @@ top_context = rerank_chain.invoke({"question": query, "candidates": formatted_ca
 ---
 
 ### 11.3 Maximal Marginal Relevance - MMR (`3-mmr.ipynb`)
+
+#### 🎯 Why We Need This:
+When a vector store contains multiple chunks from the same document or topic, standard top-k similarity search often returns **3 nearly identical chunks**. 
+- Wasteful: Wastes context window tokens on redundant information.
+- Incomplete: Misses other relevant, complementary perspectives across the corpus.
+
+**MMR Solution**: MMR balances **Relevance to Query** against **Diversity among Retrieved Chunks** to maximize unique information density.
+
 #### Imports
 ```python
 from langchain_community.vectorstores import FAISS
@@ -1233,6 +1268,7 @@ from langchain_core.prompts import PromptTemplate
 from langchain_classic.chains.combine_documents import create_stuff_documents_chain
 from langchain_classic.chains.retrieval import create_retrieval_chain
 ```
+
 #### How to Use
 ```python
 # Create MMR Retriever
@@ -1246,10 +1282,11 @@ document_chain = create_stuff_documents_chain(llm=llm, prompt=prompt)
 rag_chain = create_retrieval_chain(retriever=retriever, combine_docs_chain=document_chain)
 response = rag_chain.invoke({"input": "How does LangChain support agents and memory?"})
 ```
+
 #### What They Do
 *   `MMR` (Maximal Marginal Relevance): Optimizes for both **similarity to query** and **diversity among selected documents**.
-*   `fetch_k`: Number of candidate documents fetched initially for similarity.
-*   `lambda_mult`: Controls trade-off between relevance and diversity (`1.0` = maximum relevance, `0.0` = maximum diversity).
+*   `fetch_k`: Number of candidate documents fetched initially for similarity (`20`).
+*   `lambda_mult`: Controls trade-off between relevance and diversity (`1.0` = maximum relevance, `0.0` = maximum diversity, `0.5` = balanced).
 *   **Key Concept**: MMR avoids retrieving multiple near-identical text chunks, maximizing topic coverage within the LLM context window.
 
 <br>
