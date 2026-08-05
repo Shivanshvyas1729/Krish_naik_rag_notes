@@ -738,3 +738,211 @@ HyDE is especially useful when:
 <img width="515" height="231" alt="image" src="https://github.com/user-attachments/assets/26307b0f-6aa7-4595-a621-41db55476ab7" />
 
 </details>
+
+<details><summary>Multimodal AI</summary>
+
+# Section 1: Core PDF & Lecture Notes
+
+## 1. Key Concepts & Overview
+
+* **Multimodal RAG:** Integrates both text and visual data into a unified retrieval-augmented pipeline so queries can reference both modalities.
+* **Supported Source Data:** PDFs, Word documents, and Databases.
+* **Multimodal LLM Engine:** Uses vision-capable models (e.g., OpenAI `GPT-4.1`, Google `Gemini 2.5 Flash`) to process combined text and image context to generate final responses.
+
+---
+
+## 2. Core Processing Steps & Pipeline Flow
+
+```
+[ PDF / Word / Database ] ➔ [ Extract Text & Images ] ➔ [ CLIP Embeddings ] ➔ [ FAISS Vector Store ]
+                                                                                      │
+[ Multimodal Answer ] ◄── [ Multimodal LLM ] ◄── [ Format Payload ] ◄── [ Top-K Retrieval ] ◄── [ Query ]
+```
+
+1. **Data Extraction:** Raw input documents (PDFs, Word files, databases) are parsed to decouple text content from embedded image files.
+2. **CLIP Embedding:**
+   * **Model:** OpenAI **CLIP** (*Contrastive Language-Image Pre-Training*).
+   * **Components:** Combines a **Text Transformer** and a **Vision Transformer (ViT)**.
+   * **Vectorization:** Converts both text chunks and images into vector embeddings in a shared space.
+3. **Vector Storage:** Embeddings are indexed in a vector store (**FAISS**) for rapid similarity search.
+4. **Query & Retrieval:**
+   * Incoming user queries are embedded using CLIP.
+   * A vector search retrieves the **Top-$K$ relevant documents** containing mixed text and image data.
+5. **Formatting & LLM Generation:**
+   * Retrieved text and images are formatted into a structured payload.
+   * Sent to the Multimodal LLM (e.g., GPT-4.1 or Gemini Flash 2.5) to produce a grounded multimodal answer.
+
+---
+
+## 3. Ingesting Non-Digital & Physical Media
+
+* **Digitization:** Physical photos or paper pages must be digitized first (via high-resolution scanning or photo capture). Digitization quality directly impacts model accuracy.
+* **Embedding Processing:** Digitized images pass through CLIP visual embedding to convert visual elements into vector representations.
+* **Retrieval Compatibility:** The vector storage and retrieval pipeline must be configured to process digitized images alongside text end-to-end.
+
+---
+
+<details><summary>More Detail</summary>
+
+---
+
+# Section 2: Extended & Advanced Multimodal RAG Concepts
+
+## 1. Architectural Paradigms: Classic vs. Visual-Native
+
+### Approach A: Classic Parsing Pipeline
+
+1. **Extraction:** Layout tools split documents into raw text and cropped figures.
+2. **Single-Vector Indexing:** Images are either captioned by a VLM or embedded using CLIP into a single vector per chunk.
+3. **Trade-offs:** Fast at scale, but susceptible to OCR loss and destroys spatial formatting (e.g., tables, charts, complex slide decks).
+
+### Approach B: Visual-Native & OCR-Free Pipeline (ColPali)
+
+* **Concept:** Bypasses text/image extraction entirely by treating every PDF page directly as a single high-resolution image object.
+* **Patch-Level Tokenization:** Pages are split into a grid of visual patches (e.g., ~1024 patches per page) using visual encoders (e.g., ColPali, ColQwen2.5).
+* **Late-Interaction Scoring (MaxSim):**
+  Calculates similarity by finding the maximum cosine similarity between each query token vector $q \in Q$ and document patch vector $d \in D$:
+
+  $$\text{Score}(Q, D) = \sum_{q \in Q} \max_{d \in D} \left( q \cdot d^\top \right)$$
+
+* **Advantages:** High precision for scanned documents, CAD drawings, financial charts, and complex page layouts without requiring OCR.
+
+---
+
+## 2. Modern Embedding Models & Document Parsers
+
+| Category | Key Models & Tools | Primary Use Case |
+| :--- | :--- | :--- |
+| **Unified Single-Vector Models** | Cohere Embed 4, Voyage Multimodal 3.5, SigLIP 2 | Embeds interleaved text and page images into single vector indexes. |
+| **Multi-Vector / Late-Interaction** | ColPali-3, ColQwen2.5-7B, ColSmolVLM | Preserves visual layout and fine-grained patch details for MaxSim search. |
+| **Advanced Layout Parsers** | Docling (IBM), LlamaParse, Marker/Surya OCR, MinerU | Converts non-standard PDFs into layout-aware Markdown and structured tables. |
+
+---
+
+## 3. System Architecture Diagrams
+
+### A. Classic Parse & CLIP-Based Pipeline
+
+```
+                       [ INPUT DATA ]
+                    (PDF, Word, Database)
+                              │
+                              ▼
+                   [ Document Parser ]
+                 (Extract & Decouple)
+                              │
+               ┌──────────────┴──────────────┐
+               ▼                             ▼
+        [ Text Chunks ]              [ Image Chunks ]
+      (Paragraphs, Tables)         (Figures, Diagrams)
+               │                             │
+               ▼                             ▼
+       [ Text Transformer ]         [ Vision Transformer (ViT) ]
+        (CLIP Text Encoder)           (CLIP Vision Encoder)
+               │                             │
+               └──────────────┬──────────────┘
+                              ▼
+                  [ Shared Embedding Space ]
+                              │
+                              ▼
+                  [ Vector Store (FAISS) ]
+                    (Dense Vector Index)
+                              │
+ ┌─────────────── Query ──────┤
+ │                            ▼
+ │                   [ Vector Search ]
+ │                (Fetch Top-K Context)
+ │                            │
+ │                            ▼
+ │                 [ Multimodal Prompt ]
+ │             (Formatted Text + Image Objects)
+ │                            │
+ └────────────────────────────┼────────────────────────┐
+                              ▼                        ▼
+                   [ Multimodal LLM (VLM) ]  (User Query Prompt)
+                (GPT-4.1 / Gemini 2.5 Flash)
+                              │
+                              ▼
+                  [ Grounded Multimodal Answer ]
+```
+
+### B. Visual-Native (OCR-Free / ColPali & Late Interaction)
+
+```
+                      [ PDF Page Render ]
+                    (High Resolution Image)
+                               │
+                               ▼
+                   [ Vision-Language Encoder ]
+                (ColPali / ColQwen2.5 / ColSmol)
+                               │
+                               ▼
+                   [ Patch-Level Tokenization ]
+                     (Grid of ~1024 Patches)
+                               │
+                               ▼
+                   [ Multi-Vector Indexing ]
+                  (Per-Patch Vector Embeddings)
+                               │
+[ User Query ]                 │
+      │                        │
+      ▼                        │
+[ Query Encoder ]              │
+ (Token Vectors)               │
+      │                        │
+      └───────────┬────────────┘
+                  ▼
+       [ Late-Interaction Engine ]
+   MaxSim(Q, D) = Σ max (q_i · d_j^T)
+                  │
+                  ▼
+       [ Top-K Retracted Pages ]
+                  │
+                  ▼
+       [ Vision LLM Generation ]
+     (Reads Layout, Charts & Text)
+```
+
+### C. Enterprise Hybrid Search Architecture
+
+```
+                                    ┌──────────────────────┐
+                                    │  Ingested Document   │
+                                    └──────────┬───────────┘
+                                               │
+               ┌───────────────────────────────┼───────────────────────────────┐
+               ▼                               ▼                               ▼
+      [ Layout Parser ]               [ Text Chunker ]               [ Page Rendering ]
+     (Docling / Surya)               (Paragraph Splits)               (300 DPI Images)
+               │                               │                               │
+               ▼                               ▼                               ▼
+       [ Sparse Tokens ]               [ Dense Vectors ]              [ Multi-Vectors ]
+        (BM25 Inverted)                (Cohere / Voyage)              (ColPali / MaxSim)
+               │                               │                               │
+               ▼                               ▼                               ▼
+      ┌─────────────────┐             ┌─────────────────┐             ┌─────────────────┐
+      │  BM25 Index     │             │  Text Vector    │             │ Visual Patch    │
+      │  (Exact Match)  │             │  Index (k-NN)   │             │ Index (MaxSim)  │
+      └────────┬────────┘             └────────┬────────┘             └────────┬────────┘
+               │                               │                               │
+               └───────────────────────┬───────┴───────────────────────────────┘
+                                       ▼
+                       [ Reciprocal Rank Fusion (RRF) ]
+                       (Hybrid Search Reranker Stage)
+                                       │
+                                       ▼
+                         [ Multimodal Context Payload ]
+                           • Extracted Text & Tables
+                           • Page Visual Renderings
+                           • Spatial Bounding Boxes
+                                       │
+                                       ▼
+                       [ Vision-Language Generator ]
+                      (Gemini 2.5 Pro / GPT-4.1 / Claude)
+                                       │
+                                       ▼
+                        [ Multimodal Citation Output ]
+```
+
+</details>
+</details>
