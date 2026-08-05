@@ -741,6 +741,9 @@ HyDE is especially useful when:
 
 <details><summary>Multimodal AI</summary>
 
+
+<img width="692" height="915" alt="image" src="https://github.com/user-attachments/assets/bf8314b0-7b20-41c0-a098-f93f49f12c80" />
+
 # Section 1: Core PDF & Lecture Notes
 
 ## 1. Key Concepts & Overview
