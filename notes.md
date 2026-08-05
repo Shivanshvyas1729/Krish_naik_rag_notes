@@ -42,7 +42,7 @@
     * [12.2 Query Decomposition](#122-query-decomposition-2-querydecompositionipynb)
     * [12.3 Hypothetical Document Embeddings (HyDE)](#123-hypothetical-document-embeddings---hyde-3-hydeipynb)
 
-13. [Multimodal RAG](#13-multimodal-rag-07_multimodle-rag)
+13. [Multimodal RAG (Transferred to notes2.md)](file:///c:/Users/DELL/Desktop/rag_praacties/notes2.md#13-multimodal-rag-07_multimodle-rag)
 
 ---
 
@@ -1532,99 +1532,7 @@ retrieved_docs = vectorstore.similarity_search(hypothetical_doc, k=3)
 
 ## 13. Multimodal RAG (`07_multimodle RAG`)
 
-### 13.1 Multimodal RAG with Vision LLMs & Joint Embeddings (`1-multimodalopenai.ipynb`)
-#### Imports
-```python
-import fitz  # PyMuPDF
-import io
-import base64
-from PIL import Image
-import torch
-import numpy as np
-from transformers import CLIPModel, CLIPProcessor
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores import FAISS
-from langchain_core.documents import Document
-from langchain_core.messages import HumanMessage
-from langchain.chat_models import init_chat_model
-```
-#### How to Use
-```python
-# 1. Load CLIP model & processor for joint image+text embeddings
-clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
-clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
-clip_model.eval()
+> [!NOTE]
+> Section 13 (Multimodal RAG) and subsequent topics have been transferred and expanded in **[notes2.md](file:///c:/Users/DELL/Desktop/rag_praacties/notes2.md)**.
+> Please refer to **[notes2.md](file:///c:/Users/DELL/Desktop/rag_praacties/notes2.md)** for detailed documentation on `1-multimodalopenai.ipynb` and future RAG modules.
 
-def embed_image(pil_img):
-    inputs = clip_processor(images=pil_img, return_tensors="pt")
-    with torch.no_grad():
-        features = clip_model.get_image_features(**inputs)
-        return (features / features.norm(dim=-1, keepdim=True)).squeeze().numpy()
-
-def embed_text(text):
-    inputs = clip_processor(text=text, return_tensors="pt", padding=True, max_length=77)
-    with torch.no_grad():
-        features = clip_model.get_text_features(**inputs)
-        return (features / features.norm(dim=-1, keepdim=True)).squeeze().numpy()
-
-# 2. Extract text & images from PDF using PyMuPDF (fitz)
-doc = fitz.open("sample.pdf")
-all_docs, all_embeddings, image_data_store = [], [], {}
-splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=100)
-
-for i, page in enumerate(doc):
-    # Process text
-    text = page.get_text()
-    if text.strip():
-        for chunk in splitter.split_documents([Document(page_content=text, metadata={"page": i, "type": "text"})]):
-            all_embeddings.append(embed_text(chunk.page_content))
-            all_docs.append(chunk)
-
-    # Process images
-    for img_idx, img in enumerate(page.get_images(full=True)):
-        xref = img[0]
-        base_img = doc.extract_image(xref)
-        pil_img = Image.open(io.BytesIO(base_img["image"])).convert("RGB")
-        img_id = f"page_{i}_img_{img_idx}"
-        
-        # Save base64 for GPT-4V payload
-        buf = io.BytesIO()
-        pil_img.save(buf, format="PNG")
-        image_data_store[img_id] = base64.b64encode(buf.getvalue()).decode()
-        
-        # Embed image via CLIP
-        all_embeddings.append(embed_image(pil_img))
-        all_docs.append(Document(page_content=f"[Image: {img_id}]", metadata={"page": i, "type": "image", "image_id": img_id}))
-
-# 3. Create FAISS index with precomputed CLIP embeddings
-vector_store = FAISS.from_embeddings(
-    text_embeddings=[(doc.page_content, emb) for doc, emb in zip(all_docs, np.array(all_embeddings))],
-    embedding=None,
-    metadatas=[doc.metadata for doc in all_docs]
-)
-
-# 4. Multimodal retrieval & Vision LLM invocation (GPT-4V)
-llm = init_chat_model("openai:gpt-4.1")
-query_emb = embed_text("What does the revenue trend chart show?")
-retrieved = vector_store.similarity_search_by_vector(query_emb, k=5)
-
-# Construct message with text + base64 image_url components
-message_content = [{"type": "text", "text": "Question: What does the revenue chart show?\n"}]
-for doc in retrieved:
-    if doc.metadata.get("type") == "text":
-        message_content.append({"type": "text", "text": f"Text: {doc.page_content}"})
-    elif doc.metadata.get("type") == "image":
-        img_id = doc.metadata.get("image_id")
-        message_content.append({
-            "type": "image_url",
-            "image_url": {"url": f"data:image/png;base64,{image_data_store[img_id]}"}
-        })
-
-response = llm.invoke([HumanMessage(content=message_content)])
-print(response.content)
-```
-#### What They Do
-*   `CLIP` (`openai/clip-vit-base-patch32`): Multi-modal embedding model that maps both text strings and image pixels into the **same shared vector space**. Allows searching for images using text queries.
-*   `PyMuPDF` (`fitz`): High-speed PDF parser extracting embedded raster graphics and raw text.
-*   `Base64 Encoding`: Converts image byte streams into inline Base64 data strings for API payload transmission to vision models (GPT-4 Vision / GPT-4o).
-*   `Multimodal Prompt Payload`: Constructs structured multi-part message objects containing both string blocks (`{"type": "text"}`) and image URL objects (`{"type": "image_url"}`).

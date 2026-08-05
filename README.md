@@ -738,3 +738,82 @@ HyDE is especially useful when:
 <img width="515" height="231" alt="image" src="https://github.com/user-attachments/assets/26307b0f-6aa7-4595-a621-41db55476ab7" />
 
 </details>
+
+
+<details><summary>Multimodal RAG & Multimodal AI Architecture</summary>
+
+# Multimodal RAG & Multimodal AI
+
+## 1. What is Multimodal RAG?
+
+**Multimodal RAG (Retrieval-Augmented Generation)** extends standard text-only RAG by processing, indexing, retrieving, and reasoning over multiple data modalities—such as **text**, **images**, **charts**, **tables**, and **diagrams**.
+
+* **Core Goal:** Overcome text-only limitations by combining **Joint Embedding Spaces** (e.g., CLIP) with **Vision LLMs** (e.g., GPT-4o) to handle visual knowledge inside complex documents.
+
+---
+
+## 2. Key Architecture Components
+
+1. **Dual Modal Parsing:** Text is chunked via character splitters while visual elements (charts/diagrams) are extracted with image quality filters.
+2. **Joint Embedding Space (CLIP):** Both text passages and image pixels are mapped into the exact same 512-dimensional vector space using OpenAI CLIP.
+3. **Cross-Modal Similarity Search:** Text queries (e.g., *"Show Q1 revenue chart"*) directly match image vectors in the FAISS vector database.
+4. **Structured Vision Prompting:** Retrieved text excerpts and base64-encoded visual images are passed to **GPT-4o** for multi-modal reasoning.
+
+---
+
+## 3. Multimodal AI Workflow Diagram
+
+```mermaid
+flowchart TD
+    subgraph Document_Processing["1. Multimodal Document Parsing"]
+        Doc["📄 Multimodal Document<br/>(Text + Visual Charts)"]
+        TextSplitter["✂️ PyMuPDF & Text Splitter<br/>(Text Chunks)"]
+        ImgExtractor["🖼️ Image Extraction & Noise Filter<br/>(PNG -> Base64 URIs)"]
+        Doc --> TextSplitter
+        Doc --> ImgExtractor
+    end
+
+    subgraph Embedding_Space["2. CLIP Joint Vector Space"]
+        CLIP_Text["🔤 CLIP Text Encoder"]
+        CLIP_Img["👁️ CLIP Vision Encoder (ViT)"]
+        L2_Norm["📐 L2 Vector Normalization"]
+        VectorDB[("🗄️ Unified Vector Store<br/>(FAISS Index - 512d Space)")]
+
+        TextSplitter --> CLIP_Text
+        ImgExtractor --> CLIP_Img
+        CLIP_Text --> L2_Norm
+        CLIP_Img --> L2_Norm
+        L2_Norm --> VectorDB
+    end
+
+    subgraph Retrieval_Synthesis["3. Cross-Modal Retrieval & Generation"]
+        Query["💬 User Query<br/>(e.g., 'What is the Q1 revenue trend?')"]
+        QueryEnc["🔤 Embed Query with CLIP"]
+        Search["🔍 Cross-Modal Similarity Search"]
+        MsgBuilder["📦 Build Structured Multimodal Message<br/>(Text Context + Base64 Images)"]
+        VisionLLM["🧠 Vision LLM (GPT-4o)<br/>(Multimodal Reasoning)"]
+        Output["🎯 Final Grounded Answer"]
+
+        Query --> QueryEnc
+        QueryEnc --> Search
+        VectorDB --> Search
+        Search --> MsgBuilder
+        ImgExtractor -. "Base64 Data" .-> MsgBuilder
+        MsgBuilder --> VisionLLM
+        VisionLLM --> Output
+    end
+```
+
+---
+
+## 4. Key Benefits
+
+| Feature | Standard RAG | Multimodal RAG |
+| --- | --- | --- |
+| **Data Modality** | Text Chunks Only | Text + Images + Charts + Diagrams |
+| **Vector Space** | Text Embedding Models | CLIP Shared Vector Space (Text & Image) |
+| **Retrieval Type** | Text-to-Text | Cross-Modal (Text-to-Image & Text-to-Text) |
+| **Reasoning Model** | Text LLM (GPT-3.5/4) | Vision LLM (GPT-4o / GPT-4 Vision) |
+
+</details>
+
