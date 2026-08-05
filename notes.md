@@ -1379,7 +1379,23 @@ The most effective and widely adopted stack in enterprise production RAG relies 
 
 ## 12. Query Enhancement & Advanced RAG (`06_query_enhancment`)
 
+### 🧠 Section Overview: Why Do We Need Query Enhancement?
+User questions in real-world applications are often **short**, **ambiguous**, **misspelled**, or **multi-part**.
+- Direct vector search over raw user queries often fails because of **vocabulary mismatch** (users use colloquial words, while documents use formal/technical terminology).
+- Multi-part queries (e.g. *"Compare product X and Y"*) fail because a single vector search cannot retrieve information about two distinct topics simultaneously.
+- Short question sentences vector-align poorly with long descriptive paragraph chunks.
+
+**Query Enhancement** uses LLM reasoning *before* searching the vector database to rewrite, expand, decompose, or generate hypothetical answers for optimal retrieval accuracy.
+
+---
+
 ### 12.1 Query Expansion (`1-queryexpansion.ipynb`)
+
+#### 🎯 Why We Need This:
+Users frequently submit short or vague queries (e.g., *"agent orchestration"*). 
+- If the knowledge base uses different vocabulary (e.g., *"multi-agent coordination and DAG workflows"*), standard vector search fails to retrieve relevant chunks due to **vocabulary mismatch**.
+- **Query Expansion** uses an LLM to automatically generate synonyms, related technical terms, and domain phrasing to broaden retrieval coverage.
+
 #### Imports
 ```python
 from langchain_community.document_loaders import TextLoader
@@ -1391,6 +1407,7 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnableMap
 ```
+
 #### How to Use
 ```python
 # Expansion prompt template
@@ -1408,6 +1425,7 @@ expanded_query = expansion_chain.invoke({"query": "What is agent orchestration?"
 # Retrieve documents using expanded query
 retrieved_docs = retriever.invoke(expanded_query)
 ```
+
 #### What They Do
 *   `Query Expansion`: Uses an LLM pass to reformulate or enrich short, vague user prompts with technical vocabulary, domain synonyms, and context before retrieval.
 *   **Key Concept**: Solves vocabulary mismatch issues where users ask questions using different vocabulary than what is written in the knowledge base.
@@ -1415,6 +1433,12 @@ retrieved_docs = retriever.invoke(expanded_query)
 ---
 
 ### 12.2 Query Decomposition (`2-querydecomposition.ipynb`)
+
+#### 🎯 Why We Need This:
+Complex, multi-part, or comparative questions (e.g., *"How does LangChain memory compare to CrewAI?"*) contain multiple distinct sub-topics.
+- A single vector embedding for the entire prompt gets "averaged out" and fails to retrieve specific chunks for both subjects.
+- **Query Decomposition** breaks down a complex question into sub-queries, executes sub-retrievals in parallel/sequence, and synthesizes a final composite answer.
+
 #### Imports
 ```python
 from langchain.chat_models import init_chat_model
@@ -1427,6 +1451,7 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.runnables import RunnableSequence
 ```
+
 #### How to Use
 ```python
 # 1. Prompt to decompose complex questions into sub-questions
@@ -1458,6 +1483,7 @@ final_prompt = PromptTemplate.from_template("""Combine the sub-answers to answer
 final_chain = final_prompt | llm | StrOutputParser()
 final_response = final_chain.invoke({"question": "How does LangChain memory compare to CrewAI?", "sub_answers": "\n\n".join(results)})
 ```
+
 #### What They Do
 *   `Query Decomposition`: Breaks down multi-part or comparative questions into atomic sub-queries that can be retrieved independently.
 *   **Key Concept**: Essential for multi-hop RAG pipelines and parallel agentic execution where a single query spans multiple distinct domain areas.
@@ -1465,6 +1491,12 @@ final_response = final_chain.invoke({"question": "How does LangChain memory comp
 ---
 
 ### 12.3 Hypothetical Document Embeddings - HyDE (`3-HyDE.ipynb`)
+
+#### 🎯 Why We Need This:
+Standard vector search compares a **short question vector** (e.g. *"When was NeXT founded?"*) against **long answer paragraph vectors**. 
+- Because questions and answers look structurally different, vector similarity can be weak (**query-document asymmetry**).
+- **HyDE Solution**: HyDE asks the LLM to write a *hypothetical answer passage* first. It then embeds that generated answer and uses it to search the Vector DB for real documents that look like the hypothetical passage.
+
 #### Imports
 ```python
 from langchain_community.document_loaders import WikipediaLoader
@@ -1475,6 +1507,7 @@ from langchain.chat_models import init_chat_model
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 ```
+
 #### How to Use
 ```python
 # 1. Generate hypothetical document/answer using LLM
@@ -1490,6 +1523,7 @@ hypothetical_doc = hyde_chain.invoke({"question": "When did Steve Jobs found NeX
 # 2. Embed hypothetical document and search vector store
 retrieved_docs = vectorstore.similarity_search(hypothetical_doc, k=3)
 ```
+
 #### What They Do
 *   `HyDE`: Generates a hypothetical response document using an LLM, embeds that hypothetical passage, and uses its vector to search the vector database.
 *   **Key Concept**: Eliminates query-document asymmetry. Standard queries are short question sentences, whereas stored chunks are detailed descriptive paragraphs. Vector matching an answer-like text against stored documents yields significantly higher similarity alignment.
