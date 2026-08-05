@@ -35,6 +35,7 @@
     * [11.1 Hybrid Retriever – Dense & Sparse Combination](#111-hybrid-retriever--dense--sparse-combination-1-densesparseipynb)
     * [11.2 Re-ranking Hybrid Search Strategies](#112-re-ranking-hybrid-search-strategies-2-reranking-1ipynb)
     * [11.3 Maximal Marginal Relevance - MMR](#113-maximal-marginal-relevance---mmr-3-mmripynb)
+    * [11.4 RAG Search Strategies & Production Search Pipelines](#114-rag-search-strategies--production-search-pipelines)
 
 12. [Query Enhancement & Advanced RAG](#12-query-enhancement--advanced-rag-06_query_enhancment)
     * [12.1 Query Expansion](#121-query-expansion-1-queryexpansionipynb)
@@ -1079,7 +1080,93 @@ response = rag_chain.invoke({"input": "How does LangChain support agents and mem
 *   `lambda_mult`: Controls trade-off between relevance and diversity (`1.0` = maximum relevance, `0.0` = maximum diversity).
 *   **Key Concept**: MMR avoids retrieving multiple near-identical text chunks, maximizing topic coverage within the LLM context window.
 
+<br>
+
 ---
+
+<br>
+
+### 11.4 RAG Search Strategies & Production Search Pipelines
+
+Retrieval performance directly governs the accuracy and grounding of a RAG pipeline. Below is a comprehensive breakdown of all major search paradigms used across modern AI systems.
+
+#### 📊 Search Types in Retrieval-Augmented Generation
+
+| Search Type | Description | Best For |
+| :--- | :--- | :--- |
+| **Keyword Search (Lexical Search)** | Matches exact terms using algorithmic statistical scoring like **BM25** or **TF-IDF**. | Exact domain terms, SKUs, product IDs, code snippets, error messages. |
+| **Semantic Search (Vector Search)** | Uses dense vector embeddings to retrieve content based on underlying conceptual meaning rather than exact word matches. | Natural language queries, conversational questions, synonym/paraphrased matching. |
+| **Hybrid Search** | Combines lexical (BM25) and dense vector search, merging score ranks via **Reciprocal Rank Fusion (RRF)**. | <mark style="background-color: #d4edda; color: #155724; padding: 2px 4px; border-radius: 4px;">Industry standard</mark> for general RAG; delivers optimal precision + recall balance. |
+| **Metadata Filtering** | Pre-filters or post-filters search spaces based on structured attributes (`author`, `date`, `category`, `tenant_id`). | Scoping queries to specific doc partitions, date ranges, or multi-tenant user access boundaries. |
+| **Dense Retrieval** | Retrieves chunks by measuring high-dimensional vector distances (Cosine Similarity, Euclidean L2, Inner Product). | High-accuracy conceptual context matching. |
+| **Sparse Retrieval** | Uses term-frequency weighted vectors (**BM25**, **SPLADE**) where most dimensions are zero. | Fast exact word matching with highly interpretable similarity scores. |
+| **Multi-Vector Search** | Represents a single document using multiple embeddings (e.g., summary vector + full text vector + image vector). | Complex, multi-topic, or multi-modal documents. |
+| **Hierarchical Search** | Performs two-tier retrieval: searches summary/coarse chunks first, then drills down into fine-grained sub-chunks. | Large enterprise manuals, books, lengthy technical specs. |
+| **Parent-Child (Recursive) Retrieval** | Matches query against small, highly focused child chunks, but passes larger surrounding parent context to LLM. | Preserving deep context while keeping index chunking fine-grained. |
+| **Multi-Query Retrieval** | Uses LLM to generate multiple prompt reformulations of user query, fetching vectors for all variants. | Resolving ambiguous, complex, or underspecified questions. |
+| **Self-Query Retrieval** | Uses LLM to parse natural query into structured metadata query + semantic query payload. | Filtered requests (e.g., *"Find finance reports from 2024 covering AI"*). |
+| **Graph-Based Retrieval (GraphRAG)** | Navigates entity nodes and relationship edges in a Knowledge Graph alongside vector embeddings. | Highly connected enterprise data, entity tracking, structural relationships. |
+| **Reranked Search** | Fetches an expanded candidate pool (`k=20`), then re-scores candidate chunks using Cross-Encoders or Cohere Rerank. | Elevating top-3 context accuracy and removing false positives. |
+| **Agentic Retrieval** | Autonomous agent decides dynamically which tool, strategy, or vector collection to query over multiple steps. | Multi-hop reasoning, live database queries, enterprise agent tool execution. |
+
+<br>
+
+#### 🏗️ Common Search Pipeline in Production RAG
+
+```
+┌───────────────────────────────────────────────┐
+│                  User Query                   │
+└───────────────────────┬───────────────────────┘
+                        │
+                        ▼
+┌───────────────────────────────────────────────┐
+│     Metadata Filter (Pre-filtering Scope)     │
+└───────────────────────┬───────────────────────┘
+                        │
+                        ▼
+┌───────────────────────────────────────────────┐
+│                 Hybrid Search                 │
+│  ┌────────────────────┬────────────────────┐  │
+│  │   BM25 (Sparse)    │  Vector (Dense)    │  │
+│  └─────────┬──────────┴─────────┬──────────┘  │
+└────────────┼────────────────────┼─────────────┘
+             │                    │
+             └──────────┬─────────┘
+                        │
+                        ▼
+┌───────────────────────────────────────────────┐
+│     Merge Results (Reciprocal Rank Fusion)    │
+└───────────────────────┬───────────────────────┘
+                        │
+                        ▼
+┌───────────────────────────────────────────────┐
+│      Reranker (Cross-Encoder / Cohere)        │
+└───────────────────────┬───────────────────────┘
+                        │
+                        ▼
+┌───────────────────────────────────────────────┐
+│        Top-K Context (High Precision)         │
+└───────────────────────┬───────────────────────┘
+                        │
+                        ▼
+┌───────────────────────────────────────────────┐
+│               LLM Response Output             │
+└───────────────────────────────────────────────┘
+```
+
+<br>
+
+#### 💡 Core Takeaway for Production Systems:
+The most effective and widely adopted stack in enterprise production RAG relies on:
+1. **Hybrid Search** (Dense Vector + Sparse BM25) for high retrieval recall.
+2. **Metadata Pre-Filtering** to narrow security boundaries and date ranges.
+3. **Cross-Encoder Reranking** to ensure top-3 chunks are strictly relevant to the prompt context.
+
+<br>
+
+---
+
+<br>
 
 ## 12. Query Enhancement & Advanced RAG (`06_query_enhancment`)
 
