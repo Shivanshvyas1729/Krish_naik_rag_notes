@@ -41,21 +41,20 @@ from langchain_community.document_loaders import TextLoader, DirectoryLoader
 ```
 ### How to Use
 ```python
-# 🔹 LOAD: Load plain text file from disk into Document objects
+# Load single text file and split recursively
 loader = TextLoader("data/sample.txt")
 documents = loader.load()
 
-# 🔹 SPLIT: Split documents recursively using sentence & paragraph boundaries
 text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
 chunks = text_splitter.split_documents(documents)
 ```
 ### What They Do
-*   `Document`: LangChain's base data structure holding `page_content` (text chunk) and `metadata` dictionary.
-*   `RecursiveCharacterTextSplitter`: **Best default splitter**. Recursively splits on `\n\n`, `\n`, `" "` to preserve paragraph structure.
-*   `CharacterTextSplitter`: Rigidly splits on a single specified character.
-*   `TokenTextSplitter`: Splits text by exact LLM token count using `tiktoken`.
-*   `TextLoader` / `DirectoryLoader`: Loads single files or entire folders into LangChain Document instances.
-*   📌 **Key Concept**: **Chunk overlap (50-100 tokens)** is critical to prevent loss of context across split boundaries.
+*   `Document`: LangChain's base class storing text (`page_content`) and metadata (`metadata` dict).
+*   `RecursiveCharacterTextSplitter`: Splits text recursively using a hierarchy of separators (e.g., `\n\n`, `\n`, `" "`). **Best default splitter** as it preserves paragraphs/sentences.
+*   `CharacterTextSplitter`: Splits text rigidly based on a single character separator.
+*   `TokenTextSplitter`: Splits text strictly by token count (using `tiktoken`) to fit LLM context limits.
+*   `TextLoader` / `DirectoryLoader`: Loads a single plain text file / bulk-loads matching files from a folder.
+*   **Key Concept**: Chunk overlap is crucial to maintain contextual information across split boundaries.
 
 ---
 
@@ -66,14 +65,14 @@ from langchain_community.document_loaders import PyPDFLoader, PyMuPDFLoader
 ```
 ### How to Use
 ```python
-# 🔹 LOAD PDF: PyMuPDF provides fast C-based layout extraction page-by-page
+# Load PDF page-by-page (PyMuPDF is fast and layout-accurate)
 loader = PyMuPDFLoader("data/sample.pdf")
 pages = loader.load()
 ```
 ### What They Do
-*   `<mark style="background-color: #e2e3e5; color: #383d41; padding: 2px 5px; border-radius: 4px;">PyPDFLoader</mark>`: Pure Python PDF loader, extracts simple text page-by-page.
-*   `<mark style="background-color: #d4edda; color: #155724; padding: 2px 5px; border-radius: 4px;">PyMuPDFLoader</mark>`: <mark style="background-color: #d4edda; color: #155724; padding: 2px 4px; border-radius: 4px;">Extremely fast C-based engine</mark>. Handles multi-column layouts, images, and fonts far better.
-*   📌 **Key Concept**: <mark style="background-color: #fff3cd; color: #856404; padding: 2px 4px; border-radius: 4px;">Clean ligature errors (`ﬁ`, `ﬂ`)</mark> and extra newline spaces after loading PDF raw text.
+*   `PyPDFLoader`: Simple, pure Python loader that extracts text page-by-page.
+*   `PyMuPDFLoader`: C-based, high-accuracy PDF text extractor. **Extremely fast** and better at handling complex multi-column layouts and images.
+*   **Key Concept**: PyMuPDF is much faster. Always implement a text cleaning step to fix ligatures (`ﬁ`, `ﬂ`) and extra spaces injected during parsing.
 
 ---
 
@@ -85,18 +84,18 @@ from unstructured.partition.docx import partition_docx
 ```
 ### How to Use
 ```python
-# 🔹 FAST PLAIN TEXT: Quick extraction for simple .docx files
+# Simple text extraction
 loader = Docx2txtLoader("data/sample.docx")
 docs = loader.load()
 
-# 🔹 STRUCTURED ELEMENTS: Extract titles, narrative text & tables separately
+# Element-based structured extraction
 unstructured_loader = UnstructuredWordDocumentLoader("data/sample.docx", mode="elements", strategy="fast")
 element_docs = unstructured_loader.load()
 ```
 ### What They Do
-*   `<mark style="background-color: #e2e3e5; color: #383d41; padding: 2px 5px; border-radius: 4px;">Docx2txtLoader</mark>`: Lightweight plain-text `.docx` loader.
-*   `<mark style="background-color: #d1ecf1; color: #0c5460; padding: 2px 5px; border-radius: 4px;">UnstructuredWordDocumentLoader</mark>`: Partitions Word files into discrete element objects (Titles, Paragraphs, Tables).
-*   📌 **Key Concept**: Use `Docx2txtLoader` for speed, and `Unstructured` (`mode="elements"`) when filtering headers/footers by category metadata.
+*   `Docx2txtLoader`: Fast, lightweight loader that extracts plain text from `.docx` files.
+*   `UnstructuredWordDocumentLoader`: Uses the `unstructured` library to partition documents into elements (Titles, NarrativeText, Tables). Using `mode="elements"` yields separate documents per logical section.
+*   **Key Concept**: Use `Docx2txtLoader` for simple files, and `Unstructured` (with `strategy="fast"`) if you need to filter out headers/footers/page numbers by category metadata.
 
 ---
 
@@ -108,14 +107,15 @@ import pandas as pd
 ```
 ### How to Use
 ```python
-# 🔹 ROW-BY-ROW LOAD: Each row becomes a Document with key-value pairs
+# Load CSV (each row is loaded as a separate Document object)
 loader = CSVLoader("data/products.csv", source_column="Product")
 docs = loader.load()
 ```
 ### What They Do
-*   `<mark style="background-color: #e2e3e5; color: #383d41; padding: 2px 5px; border-radius: 4px;">CSVLoader</mark>`: Converts each CSV row into a structured key-value text document.
-*   `<mark style="background-color: #e2e3e5; color: #383d41; padding: 2px 5px; border-radius: 4px;">UnstructuredExcelLoader</mark>`: Extracts Excel sheet tables as text documents.
-*   📌 **Key Concept**: <mark style="background-color: #f8d7da; color: #721c24; padding: 2px 4px; border-radius: 4px;">Avoid embedding raw tabular rows directly</mark>. Convert rows into natural language summaries (e.g. *"Product X costs $Y in Category Z"*) before embedding.
+*   `CSVLoader`: Creates a Document object for each row of a CSV, writing columns as key-value text lines.
+*   `UnstructuredExcelLoader`: Loads sheets and tables as text elements.
+*   `pandas.DataFrame`: Used for custom CSV/Excel processing before converting to LangChain Documents.
+*   **Key Concept**: Avoid embedding huge database-like tables row-by-row in a vector store. Convert rows to structured natural language summaries (e.g., `"Product X is category Y priced at Z"`) for better retrieval.
 
 ---
 
@@ -126,13 +126,13 @@ from langchain_community.document_loaders import JSONLoader
 ```
 ### How to Use
 ```python
-# 🔹 JQ FILTER: Extract specific nested fields using jq JSON query path
+# Load specific values from nested JSON using jq path queries
 loader = JSONLoader("data/company.json", jq_schema=".employees[].role", text_content=True)
 docs = loader.load()
 ```
 ### What They Do
-*   `<mark style="background-color: #d1ecf1; color: #0c5460; padding: 2px 5px; border-radius: 4px;">JSONLoader</mark>`: Parses JSON/JSONL using `jq_schema` expressions to select target attributes.
-*   📌 **Key Concept**: Strip syntax brackets (`{}[]"`) and convert nested JSON values into descriptive natural text strings prior to vector indexing.
+*   `JSONLoader`: Loads JSON/JSONL files. Uses a `jq_schema` path filter to extract specific nested attributes/fields as separate Documents.
+*   **Key Concept**: Avoid embedding raw JSON syntax symbols (`{}[]"`). Construct clean natural language summaries for indexing, and keep raw JSON fields in metadata for precise filtering.
 
 ---
 
@@ -144,15 +144,15 @@ from langchain_community.document_loaders import SQLDatabaseLoader
 ```
 ### How to Use
 ```python
-# 🔹 CONNECT & QUERY: Run SQL query and load row outputs into Document objects
+# Connect to DB and load specific query outputs as Documents
 db = SQLDatabase.from_uri("sqlite:///data/company.db")
 loader = SQLDatabaseLoader(query="SELECT name, role FROM employees", db=db)
 docs = loader.load()
 ```
 ### What They Do
-*   `<mark style="background-color: #e2e3e5; color: #383d41; padding: 2px 5px; border-radius: 4px;">SQLDatabase</mark>`: Manages DB connections and fetches table DDL schemas.
-*   `<mark style="background-color: #e2e3e5; color: #383d41; padding: 2px 5px; border-radius: 4px;">SQLDatabaseLoader</mark>`: Converts SQL query record outputs to LangChain Document chunks.
-*   📌 **Key Concept**: <mark style="background-color: #f8d7da; color: #721c24; padding: 2px 4px; border-radius: 4px;">Do NOT embed entire relational tables</mark>. Use Text-to-SQL agent workflows with **Read-Only** database permissions.
+*   `SQLDatabase`: Connects to relational databases (SQLite, PostgreSQL, etc.) and provides DDL schema metadata.
+*   `SQLDatabaseLoader`: Runs queries on a database and loads each row as a LangChain Document.
+*   **Key Concept**: Embedding an entire relational database is an anti-pattern. Instead, use a Text-to-SQL agent workflow (passing DDL schemas to LLM) or connect using SQL connections with strict **Read-Only** permissions.
 
 ---
 
@@ -164,21 +164,21 @@ from langchain_openai import OpenAIEmbeddings
 ```
 ### How to Use
 ```python
-# 🔹 LOCAL EMBEDDINGS ($0 cost): Runs open-source HuggingFace model locally
+# Local HuggingFace Embeddings
 hf_embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 vector_query = hf_embeddings.embed_query("your query text")
 
-# 🔹 API EMBEDDINGS: Calls OpenAI API for text-embedding-3-small vectors
+# API-Based OpenAI Embeddings
 openai_embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 vector_docs = openai_embeddings.embed_documents(["doc chunk 1", "doc chunk 2"])
 ```
 ### What They Do
-*   `<mark style="background-color: #d4edda; color: #155724; padding: 2px 5px; border-radius: 4px;">HuggingFaceEmbeddings</mark>`: <mark style="background-color: #fff3cd; color: #856404; padding: 2px 4px; border-radius: 4px;">$0 local embedding generation</mark> using open-source models (`all-MiniLM-L6-v2`).
-*   `<mark style="background-color: #d1ecf1; color: #0c5460; padding: 2px 5px; border-radius: 4px;">OpenAIEmbeddings</mark>`: High-dimensional semantic vectors via OpenAI API (`text-embedding-3-small`).
+*   `HuggingFaceEmbeddings`: Generates vector representations locally ($0 API cost) using open-source models like `all-MiniLM-L6-v2`. Use `model_kwargs={'device': 'cuda'}` for GPU acceleration.
+*   `OpenAIEmbeddings`: Generates high-quality semantic vectors via the OpenAI API. Use the newer `text-embedding-3-small` model (cheaper and supports custom output dimension reduction).
 *   **Key Methods**:
-    *   `embed_documents(list_of_texts)`: <mark style="background-color: #e2e3e5; color: #383d41; padding: 2px 4px; border-radius: 4px;">Indexing phase</mark> (processes batch of text chunks).
-    *   `embed_query(single_text)`: <mark style="background-color: #e2e3e5; color: #383d41; padding: 2px 4px; border-radius: 4px;">Search phase</mark> (processes user prompt).
-*   📌 **Key Concept**: <mark style="background-color: #fff3cd; color: #856404; padding: 2px 4px; border-radius: 4px;">Cosine similarity measures angle</mark> between normalized vectors, eliminating document length bias.
+    *   `embed_documents(list_of_texts)`: Embeds multiple document chunks (indexing phase).
+    *   `embed_query(single_text)`: Embeds the user query (search phase).
+*   **Key Concept**: Cosine similarity measures the angle between vectors to check document similarity, bypassing issues with document length variance.
 
 ---
 
@@ -189,36 +189,36 @@ Vector databases store and index high-dimensional vector embeddings generated by
 
 | Vector DB | Type | Storage / Persistence | Key Advantage | Best Use Case |
 |-----------|------|-----------------------|---------------|---------------|
-| **ChromaDB** | **Open Source / Local & Cloud** | Disk (SQLite/Parquet) or Cloud Server / Hosted Cloud | **Zero-config local setup**, persistence, client/server & managed cloud support | **Local RAG & rapid prototyping**, microservices via Chroma Cloud |
-| **FAISS** | **In-Memory C++ Library** | Local Files (`.index` / `.pkl`) | **Blazing fast GPU/CPU vector search** | **In-memory batch vector searches**, localized search without server overhead |
-| **Pinecone** | **Cloud Managed Service** | Fully Managed Serverless Cloud | **Zero infra management**, enterprise scaling & real-time updates | **Production RAG pipelines**, multi-tenant SaaS applications |
-| **AstraDB / DataStax** | **Cloud Managed Service** | Serverless Cassandra | **Vector + NoSQL JSON docs**, global scale & low latency | **Enterprise hybrid data RAG** requiring document storage |
-| **InMemoryVectorStore** | **Core Store** | In-Memory Python Dict | **Zero external dependencies**, pure Python execution | **Unit testing & CI/CD**, single-session demo scripts |
+| **ChromaDB** | <mark style="background-color: #fff3cd; color: #856404; padding: 2px 4px; border-radius: 4px;">Open Source / Local & Cloud</mark> | Disk (SQLite/Parquet) or Cloud Server / Hosted Cloud | <mark style="background-color: #e2e3e5; color: #383d41; padding: 2px 4px; border-radius: 4px;">Zero-config local setup</mark>, persistence, client/server & managed cloud support | <mark style="background-color: #d1ecf1; color: #0c5460; padding: 2px 4px; border-radius: 4px;">Local RAG & rapid prototyping</mark>, microservices via Chroma Cloud |
+| **FAISS** | <mark style="background-color: #fff3cd; color: #856404; padding: 2px 4px; border-radius: 4px;">In-Memory C++ Library</mark> | Local Files (`.index` / `.pkl`) | <mark style="background-color: #d4edda; color: #155724; padding: 2px 4px; border-radius: 4px;">Blazing fast GPU/CPU vector search</mark> | <mark style="background-color: #d1ecf1; color: #0c5460; padding: 2px 4px; border-radius: 4px;">In-memory batch vector searches</mark>, localized search without server overhead |
+| **Pinecone** | <mark style="background-color: #f8d7da; color: #721c24; padding: 2px 4px; border-radius: 4px;">Cloud Managed Service</mark> | Fully Managed Serverless Cloud | <mark style="background-color: #d4edda; color: #155724; padding: 2px 4px; border-radius: 4px;">Zero infra management</mark>, enterprise scaling & real-time updates | <mark style="background-color: #d1ecf1; color: #0c5460; padding: 2px 4px; border-radius: 4px;">Production RAG pipelines</mark>, multi-tenant SaaS applications |
+| **AstraDB / DataStax** | <mark style="background-color: #f8d7da; color: #721c24; padding: 2px 4px; border-radius: 4px;">Cloud Managed Service</mark> | Serverless Cassandra | <mark style="background-color: #e2e3e5; color: #383d41; padding: 2px 4px; border-radius: 4px;">Vector + NoSQL JSON docs</mark>, global scale & low latency | <mark style="background-color: #d1ecf1; color: #0c5460; padding: 2px 4px; border-radius: 4px;">Enterprise hybrid data RAG</mark> requiring document storage |
+| **InMemoryVectorStore** | <mark style="background-color: #fff3cd; color: #856404; padding: 2px 4px; border-radius: 4px;">Core Store</mark> | In-Memory Python Dict | <mark style="background-color: #e2e3e5; color: #383d41; padding: 2px 4px; border-radius: 4px;">Zero external dependencies</mark>, pure Python execution | <mark style="background-color: #d1ecf1; color: #0c5460; padding: 2px 4px; border-radius: 4px;">Unit testing & CI/CD</mark>, single-session demo scripts |
 
 ---
 
 ### 💡 When to Use Which Vector Database? (Decision Guide)
 
-1. **Use `ChromaDB` when:**
+1. **Use <mark style="background-color: #fff3cd; color: #856404; padding: 2px 6px; border-radius: 4px;">ChromaDB</mark> when:**
    * You are building **local RAG applications**, Python scripts, or desktop tools.
    * You want an easy, lightweight database that runs embedded in Python or in Docker containers.
-   * You plan to transition from local testing to a remote microservice or managed **Chroma Cloud** (`HttpClient` / Hosted Service) without changing your application query logic.
+   * You plan to transition from local testing to a remote microservice or managed **<mark style="background-color: #d1ecf1; color: #0c5460; padding: 2px 4px; border-radius: 4px;">Chroma Cloud</mark>** (`HttpClient` / Hosted Service) without changing your application query logic.
 
-2. **Use `FAISS` when:**
-   * You need **maximum similarity search speed** over fixed/static vector datasets.
+2. **Use <mark style="background-color: #d4edda; color: #155724; padding: 2px 6px; border-radius: 4px;">FAISS</mark> when:**
+   * You need **<mark style="background-color: #fff3cd; color: #856404; padding: 2px 4px; border-radius: 4px;">maximum similarity search speed</mark>** over fixed/static vector datasets.
    * You want to run searches purely in memory or perform high-throughput **GPU-accelerated** indexing.
    * You do **not** need multi-user concurrency, API server features, or real-time CRUD operations.
 
-3. **Use `Pinecone` when:**
-   * You are deploying **production RAG applications** to cloud environments.
+3. **Use <mark style="background-color: #f8d7da; color: #721c24; padding: 2px 6px; border-radius: 4px;">Pinecone</mark> when:**
+   * You are deploying **<mark style="background-color: #d4edda; color: #155724; padding: 2px 4px; border-radius: 4px;">production RAG applications</mark>** to cloud environments.
    * You require a **fully managed serverless infrastructure** with automatic scaling, backup, high availability, and metadata filtering.
    * You want zero infrastructure maintenance (no managing servers or disk storage).
 
-4. **Use `DataStax / AstraDB` when:**
+4. **Use <mark style="background-color: #e2e3e5; color: #383d41; padding: 2px 6px; border-radius: 4px;">DataStax / AstraDB</mark> when:**
    * You require enterprise-grade serverless cloud vector search backed by Apache Cassandra.
    * You need both **rich JSON document/NoSQL storage** alongside vector embeddings.
 
-5. **Use `InMemoryVectorStore` when:**
+5. **Use <mark style="background-color: #fff3cd; color: #856404; padding: 2px 6px; border-radius: 4px;">InMemoryVectorStore</mark> when:**
    * You are running **unit tests**, continuous integration (CI) tests, or quick 1-file proof-of-concepts where vectors don't need to persist after Python exits.
 
 ---
@@ -297,15 +297,15 @@ filtered_docs = db.similarity_search(
 # 2. Collection Inspection & Item Count
 print(f"Total stored vectors: {db._collection.count()}")
 
-```python
-# 🔹 DELETE: Remove specific document entries from Chroma using unique IDs
+# 3. Document Deletion by ID (CRUD - Delete)
+# Delete specific document entries from Chroma using their unique IDs
 db.delete(ids=["doc_id_1", "doc_id_2"])
 ```
 
 ---
 
 ### 2. FAISS (`langchain_community.vectorstores.FAISS`)
-FAISS (Facebook AI Similarity Search) is a <mark style="background-color: #d4edda; color: #155724; padding: 2px 5px; border-radius: 4px;">high-performance C++ vector library</mark> designed for ultra-fast dense vector similarity search and GPU indexing.
+FAISS (Facebook AI Similarity Search) is a high-performance library for efficient similarity search and clustering of dense vectors, written in C++ with Python bindings.
 
 #### Imports
 ```python
@@ -324,13 +324,13 @@ class FAISSVectorStoreManager:
         """
         Creates a FAISS vector index in memory and saves index files (.faiss + .pkl) to disk.
         """
-        # 🔹 BUILD FAISS INDEX: Creates in-memory C++ index from document vectors
+        # Build in-memory vector store index from document chunks
         db = FAISS.from_documents(
             chunks,
             self.embedding
         )
         
-        # 🔹 SAVE TO DISK: Writes binary index (.faiss) and metadata pickle (.pkl) files
+        # Persist binary vector index and metadata docstore pickle file to disk
         db.save_local(folder_path=self.persitent_dir)
         return db
 
@@ -338,23 +338,22 @@ class FAISSVectorStoreManager:
         """
         Loads a saved FAISS index from the local directory.
         """
-        # 🔹 DESERIALIZE INDEX: Load local FAISS binary index into RAM
         return FAISS.load_local(
             folder_path=self.persitent_dir,
             embeddings=self.embedding,
-            allow_dangerous_deserialization=True  # ⚠️ ALLOW UNPICKLE: Required for metadata docstore
+            allow_dangerous_deserialization=True  # Required to unpickle metadata docstore safely
         )
 ```
 
 #### Core Methods Breakdown
-*   `FAISS.from_documents(chunks, embedding)`: <mark style="background-color: #e2e3e5; color: #383d41; padding: 2px 4px; border-radius: 4px;">Constructs in-memory FAISS similarity index</mark>.
-*   `db.save_local(folder_path)`: <mark style="background-color: #fff3cd; color: #856404; padding: 2px 4px; border-radius: 4px;">Serializes binary index files (`index.faiss` & `index.pkl`)</mark>.
-*   `FAISS.load_local(...)`: <mark style="background-color: #d1ecf1; color: #0c5460; padding: 2px 4px; border-radius: 4px;">Loads index back into RAM memory</mark>.
+*   `FAISS.from_documents(chunks, embedding)`: Constructs an in-memory FAISS similarity index.
+*   `db.save_local(folder_path)`: Serializes and saves index files (`index.faiss` and `index.pkl`) to disk.
+*   `FAISS.load_local(folder_path, embeddings, allow_dangerous_deserialization=True)`: Loads the persisted FAISS index back into memory.
 
 ---
 
 ### 3. Pinecone (`langchain_pinecone.PineconeVectorStore`)
-Pinecone is a <mark style="background-color: #f8d7da; color: #721c24; padding: 2px 5px; border-radius: 4px;">cloud-native, fully-managed serverless vector database</mark> built for zero-maintenance enterprise scaling and real-time metadata filtering.
+Pinecone is a cloud-native, fully-managed serverless vector database designed for production scaling, high availability, and metadata pre-filtering.
 
 #### Imports
 ```python
@@ -374,7 +373,7 @@ class PineconeVectorStoreManager:
     def __init__(self, index_name="rag-index"):
         self.index_name = index_name
         self.embedding = OpenAIEmbeddings(model="text-embedding-3-small")
-        self.pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY")) # 🔹 AUTH: Initialize Pinecone client with API key
+        self.pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
 
     def create_and_persist_vector_store(self, chunks):
         """
@@ -382,15 +381,14 @@ class PineconeVectorStoreManager:
         """
         existing_indexes = [idx["name"] for idx in self.pc.list_indexes()]
         if self.index_name not in existing_indexes:
-            # 🔹 CREATE CLOUD INDEX: Initialize serverless index specification on AWS/GCP
             self.pc.create_index(
                 name=self.index_name,
-                dimension=1536,  # 🔹 VECTOR DIMENSION: Must match text-embedding-3-small (1536)
+                dimension=1536,  # Vector dimensions for text-embedding-3-small
                 metric="cosine",
                 spec=ServerlessSpec(cloud="aws", region="us-east-1")
             )
             
-        # 🔹 UPSERT VECTORS: Embed chunks & stream vectors directly to Pinecone Cloud
+        # Create and persist chunks to cloud vector store
         db = PineconeVectorStore.from_documents(
             chunks,
             self.embedding,
@@ -402,7 +400,6 @@ class PineconeVectorStoreManager:
         """
         Connects to an existing cloud-hosted Pinecone vector store index.
         """
-        # 🔹 CONNECT TO CLOUD INDEX: Instant pointer connection without downloading vectors
         return PineconeVectorStore(
             index_name=self.index_name,
             embedding=self.embedding
@@ -412,17 +409,17 @@ class PineconeVectorStoreManager:
 ---
 
 ### 4. InMemoryVectorStore (`langchain_core.vectorstores.InMemoryVectorStore`)
-Simplest zero-dependency <mark style="background-color: #fff3cd; color: #856404; padding: 2px 5px; border-radius: 4px;">transient in-memory vector store</mark> built directly into `langchain-core`. Vectors are stored in a Python dictionary and lost when process terminates.
+Simplest zero-dependency transient vector store built directly into `langchain-core`. Vectors are stored in Python memory and lost when the application finishes running.
 
 ```python
 from langchain_core.vectorstores import InMemoryVectorStore
 from langchain_openai import OpenAIEmbeddings
 
-# 🔹 INITIALIZE IN-MEMORY STORE: Pure Python dictionary storage
+# Create In-Memory Vector Store
 embedding = OpenAIEmbeddings()
 db = InMemoryVectorStore.from_documents(chunks, embedding)
 
-# 🔹 QUERY: Perform exact distance search in RAM
+# Query In-Memory Vector Store
 results = db.similarity_search("Explain vector embeddings", k=2)
 ```
 
@@ -432,22 +429,22 @@ results = db.similarity_search("Explain vector embeddings", k=2)
 
 Similarity search relies on mathematical distance metrics between high-dimensional vector embeddings:
 
-1. 📐 **Cosine Similarity**:
-   * Measures the <mark style="background-color: #d1ecf1; color: #0c5460; padding: 2px 4px; border-radius: 4px;">angle cosine between two vectors</mark>.
+1. **Cosine Similarity**:
+   * Measures the angle cosine between two vectors.
    * **Range**: `-1.0` to `1.0` (or normalized `0.0` to `1.0`).
-   * 📌 **Interpretation**: **<mark style="background-color: #d4edda; color: #155724; padding: 2px 4px; border-radius: 4px;">Higher is MORE similar</mark>**. `1.0` represents identical vector direction regardless of text length.
+   * **Interpretation**: **Higher is MORE similar**. `1.0` represents identical vector direction regardless of text length.
 
-2. 📏 **Euclidean Distance (L2 Distance)**:
-   * Measures <mark style="background-color: #e2e3e5; color: #383d41; padding: 2px 4px; border-radius: 4px;">straight-line geometric distance</mark> between vector points in multi-dimensional space.
+2. **Euclidean Distance (L2 Distance)**:
+   * Measures straight-line geometric distance between vector points in multi-dimensional space.
    * **Range**: `0.0` to `+∞`.
-   * 📌 **Interpretation**: **<mark style="background-color: #fff3cd; color: #856404; padding: 2px 4px; border-radius: 4px;">Lower is MORE similar</mark>**. `0.0` represents identical vector positions.
+   * **Interpretation**: **Lower is MORE similar**. `0.0` represents identical vectors.
 
-3. 🎯 **Dot Product (Inner Product)**:
+3. **Dot Product (Inner Product)**:
    * Measures both vector angle and magnitude. Fast for normalized vectors where dot product equals cosine similarity.
 
-> ⚠️ **Important Note on Score Sorting**:
+> **Important Note on Score Sorting**:
 > * `db.similarity_search(query)` returns Documents ordered by relevance.
-> * `db.similarity_search_with_score(query)` returns tuples `(Document, score)`. When using L2 distance metrics (e.g., Chroma default), **<mark style="background-color: #fff3cd; color: #856404; padding: 2px 4px; border-radius: 4px;">smaller scores represent closer matches</mark>**. When using cosine similarity, **<mark style="background-color: #d4edda; color: #155724; padding: 2px 4px; border-radius: 4px;">larger scores represent closer matches</mark>**.
+> * `db.similarity_search_with_score(query)` returns tuples `(Document, score)`. When using L2 distance metrics (e.g., Chroma default), **smaller scores represent closer matches**. When using cosine similarity, **larger scores represent closer matches** prints.
 
 ---
 
@@ -1109,7 +1106,7 @@ from langchain_core.output_parsers import StrOutputParser
 ```
 #### How to Use
 ```python
-# 🔹 1. HYPOTHETICAL DOC GENERATION: Generate answer passage using LLM prompt
+# 1. Generate hypothetical document/answer using LLM
 hyde_prompt = PromptTemplate.from_template("""
 Please write a passage to answer the question.
 
@@ -1119,12 +1116,12 @@ Passage:
 hyde_chain = hyde_prompt | llm | StrOutputParser()
 hypothetical_doc = hyde_chain.invoke({"question": "When did Steve Jobs found NeXT?"})
 
-# 🔹 2. VECTOR SEARCH VIA HYPOTHETICAL DOC: Embed generated passage to search DB
+# 2. Embed hypothetical document and search vector store
 retrieved_docs = vectorstore.similarity_search(hypothetical_doc, k=3)
 ```
 #### What They Do
-*   `<mark style="background-color: #d1ecf1; color: #0c5460; padding: 2px 5px; border-radius: 4px;">HyDE (Hypothetical Document Embeddings)</mark>`: Generates a hypothetical response document using an LLM, embeds that hypothetical passage, and uses its vector to search the vector database.
-*   📌 **Key Concept**: <mark style="background-color: #fff3cd; color: #856404; padding: 2px 4px; border-radius: 4px;">Eliminates query-document asymmetry</mark>. Standard queries are short questions, whereas stored chunks are long paragraphs. Vector matching an answer-like text against stored documents yields significantly higher similarity alignment.
+*   `HyDE`: Generates a hypothetical response document using an LLM, embeds that hypothetical passage, and uses its vector to search the vector database.
+*   **Key Concept**: Eliminates query-document asymmetry. Standard queries are short question sentences, whereas stored chunks are detailed descriptive paragraphs. Vector matching an answer-like text against stored documents yields significantly higher similarity alignment.
 
 ---
 
@@ -1148,7 +1145,7 @@ from langchain.chat_models import init_chat_model
 ```
 #### How to Use
 ```python
-# 🔹 1. LOAD CLIP MODEL: Joint text & image embedding space model
+# 1. Load CLIP model & processor for joint image+text embeddings
 clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
 clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
 clip_model.eval()
@@ -1165,48 +1162,48 @@ def embed_text(text):
         features = clip_model.get_text_features(**inputs)
         return (features / features.norm(dim=-1, keepdim=True)).squeeze().numpy()
 
-# 🔹 2. EXTRACT TEXT & IMAGES: PyMuPDF parses PDF pages into text & raw PIL images
+# 2. Extract text & images from PDF using PyMuPDF (fitz)
 doc = fitz.open("sample.pdf")
 all_docs, all_embeddings, image_data_store = [], [], {}
 splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=100)
 
 for i, page in enumerate(doc):
-    # Process text chunks
+    # Process text
     text = page.get_text()
     if text.strip():
         for chunk in splitter.split_documents([Document(page_content=text, metadata={"page": i, "type": "text"})]):
             all_embeddings.append(embed_text(chunk.page_content))
             all_docs.append(chunk)
 
-    # Process embedded images
+    # Process images
     for img_idx, img in enumerate(page.get_images(full=True)):
         xref = img[0]
         base_img = doc.extract_image(xref)
         pil_img = Image.open(io.BytesIO(base_img["image"])).convert("RGB")
         img_id = f"page_{i}_img_{img_idx}"
         
-        # Save base64 string for Vision LLM payload
+        # Save base64 for GPT-4V payload
         buf = io.BytesIO()
         pil_img.save(buf, format="PNG")
         image_data_store[img_id] = base64.b64encode(buf.getvalue()).decode()
         
-        # Embed image into shared CLIP vector space
+        # Embed image via CLIP
         all_embeddings.append(embed_image(pil_img))
         all_docs.append(Document(page_content=f"[Image: {img_id}]", metadata={"page": i, "type": "image", "image_id": img_id}))
 
-# 🔹 3. FAISS INDEX: Build FAISS vector store using precalculated CLIP embeddings
+# 3. Create FAISS index with precomputed CLIP embeddings
 vector_store = FAISS.from_embeddings(
     text_embeddings=[(doc.page_content, emb) for doc, emb in zip(all_docs, np.array(all_embeddings))],
     embedding=None,
     metadatas=[doc.metadata for doc in all_docs]
 )
 
-# 🔹 4. MULTIMODAL RETRIEVAL & GPT-4 VISION INVOCATION
+# 4. Multimodal retrieval & Vision LLM invocation (GPT-4V)
 llm = init_chat_model("openai:gpt-4.1")
 query_emb = embed_text("What does the revenue trend chart show?")
 retrieved = vector_store.similarity_search_by_vector(query_emb, k=5)
 
-# Build multimodal message payload (Text + base64 image URLs)
+# Construct message with text + base64 image_url components
 message_content = [{"type": "text", "text": "Question: What does the revenue chart show?\n"}]
 for doc in retrieved:
     if doc.metadata.get("type") == "text":
@@ -1222,7 +1219,7 @@ response = llm.invoke([HumanMessage(content=message_content)])
 print(response.content)
 ```
 #### What They Do
-*   `<mark style="background-color: #d4edda; color: #155724; padding: 2px 5px; border-radius: 4px;">CLIP Model</mark>` (`openai/clip-vit-base-patch32`): Multi-modal embedding model that maps both text strings and image pixels into the **same shared vector space**. Enables retrieving images using plain text prompts.
-*   `<mark style="background-color: #e2e3e5; color: #383d41; padding: 2px 5px; border-radius: 4px;">PyMuPDF (fitz)</mark>`: High-speed C-based parser for extracting embedded raster images and structured page text.
+*   `CLIP` (`openai/clip-vit-base-patch32`): Multi-modal embedding model that maps both text strings and image pixels into the **same shared vector space**. Allows searching for images using text queries.
+*   `PyMuPDF` (`fitz`): High-speed PDF parser extracting embedded raster graphics and raw text.
 *   `Base64 Encoding`: Converts image byte streams into inline Base64 data strings for API payload transmission to vision models (GPT-4 Vision / GPT-4o).
 *   `Multimodal Prompt Payload`: Constructs structured multi-part message objects containing both string blocks (`{"type": "text"}`) and image URL objects (`{"type": "image_url"}`).
