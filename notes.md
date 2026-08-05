@@ -3,31 +3,44 @@
 ---
 
 ## 📋 Table of Contents
+
 1. [Data Ingestion & Splitting](#1-data-ingestion--splitting-1-dataingestionipynb)
+
 2. [PDF Parsing](#2-pdf-parsing-2-dataparsingpdfipynb)
+
 3. [Word Document Parsing](#3-word-document-parsing-3-dataparsingdocipynb)
+
 4. [CSV & Excel Structured Parsing](#4-csv--excel-structured-parsing-4-csvexcelparsingipynb)
+
 5. [JSON Parsing](#5-json-parsing-5-jsonparsingipynb)
+
 6. [Database Parsing](#6-database-parsing-6-databaseparsingipynb)
+
 7. [Embedding Models](#7-embedding-models-70-embeddingipynb--71-openaiembeddingsipynb)
+
 8. [Vector Databases](#8-vector-databases-81---84)
    * [ChromaDB (`langchain_chroma.Chroma`)](#1-chroma-langchain_chromachroma)
    * [FAISS (`langchain_community.vectorstores.FAISS`)](#2-faiss-langchain_communityvectorstoresfaiss)
    * [Pinecone (`langchain_pinecone.PineconeVectorStore`)](#3-pinecone-langchain_pineconepineconevectorstore)
    * [InMemoryVectorStore](#4-inmemoryvectorstore-langchain_corevectorstoresinmemoryvectorstore)
    * [Vector Distance Metrics & Similarity Scores](#understanding-vector-distance-metrics--similarity-scores)
+
 9. [RAG Chains & Conversational Memory](#9-rag-chains--conversational-memory-81-chromadbipynb)
+
 10. [Semantic Chunking](#10-semantic-chunking-91-semantichunkingipynb)
     * [RAG Chain Types Comparison](#rag-chain-types-comparison)
     * [Vector Store vs Vector Database](#vector-store-vs-vector-database)
+
 11. [Hybrid Search & Re-ranking](#11-hybrid-search--re-ranking-05_hybrid-search)
     * [11.1 Hybrid Retriever – Dense & Sparse Combination](#111-hybrid-retriever--dense--sparse-combination-1-densesparseipynb)
     * [11.2 Re-ranking Hybrid Search Strategies](#112-re-ranking-hybrid-search-strategies-2-reranking-1ipynb)
     * [11.3 Maximal Marginal Relevance - MMR](#113-maximal-marginal-relevance---mmr-3-mmripynb)
+
 12. [Query Enhancement & Advanced RAG](#12-query-enhancement--advanced-rag-06_query_enhancment)
     * [12.1 Query Expansion](#121-query-expansion-1-queryexpansionipynb)
     * [12.2 Query Decomposition](#122-query-decomposition-2-querydecompositionipynb)
     * [12.3 Hypothetical Document Embeddings (HyDE)](#123-hypothetical-document-embeddings---hyde-3-hydeipynb)
+
 13. [Multimodal RAG](#13-multimodal-rag-07_multimodle-rag)
 
 ---
@@ -45,18 +58,30 @@ from langchain_community.document_loaders import TextLoader, DirectoryLoader
 loader = TextLoader("data/sample.txt")
 documents = loader.load()
 
-text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
+# 🔹 KEY CONFIG: chunk_size=500, chunk_overlap=50 (10% overlap ratio rule of thumb)
+text_splitter = RecursiveCharacterTextSplitter(
+    chunk_size=500, 
+    chunk_overlap=50,
+    separators=["\n\n", "\n", " ", ""]  # Preserves paragraph & sentence structures
+)
 chunks = text_splitter.split_documents(documents)
 ```
 ### What They Do
-*   `Document`: LangChain's base class storing text (`page_content`) and metadata (`metadata` dict).
-*   `RecursiveCharacterTextSplitter`: Splits text recursively using a hierarchy of separators (e.g., `\n\n`, `\n`, `" "`). **Best default splitter** as it preserves paragraphs/sentences.
-*   `CharacterTextSplitter`: Splits text rigidly based on a single character separator.
-*   `TokenTextSplitter`: Splits text strictly by token count (using `tiktoken`) to fit LLM context limits.
-*   `TextLoader` / `DirectoryLoader`: Loads a single plain text file / bulk-loads matching files from a folder.
-*   **Key Concept**: Chunk overlap is crucial to maintain contextual information across split boundaries.
+*   `Document`: LangChain's base class storing raw text (`page_content`) and arbitrary key-value dict metadata (`metadata`).
+*   `RecursiveCharacterTextSplitter`: <mark style="background-color: #d4edda; color: #155724; padding: 2px 4px; border-radius: 4px;">Best default splitter</mark>. Recursively splits text using a hierarchy of separators (`\n\n`, `\n`, `" "`, `""`) to keep paragraphs and sentences visually intact.
+*   `CharacterTextSplitter`: Splits text rigidly based on a single character separator (e.g. `\n\n`), risking oversized chunks if separators are far apart.
+*   `TokenTextSplitter`: Splits text strictly by token count (using OpenAI `tiktoken`) to guarantee chunk sizes fit exact LLM context boundaries.
+*   `TextLoader` / `DirectoryLoader`: Loads a single plain text file / bulk-loads matching document files from a folder directory.
+
+### 💡 Advanced Best Practices & Key Insights:
+*   **Chunk Overlap Strategy**: Always set `chunk_overlap` between <mark style="background-color: #fff3cd; color: #856404; padding: 2px 4px; border-radius: 4px;">10% to 20% of `chunk_size`</mark>. This prevents losing critical semantic context across chunk boundary splits.
+*   **Metadata Enrichment**: Always inject custom metadata attributes (e.g., `source`, `creation_date`, `category`) onto each Document during ingestion for precise metadata filtering in vector databases.
+
+<br>
 
 ---
+
+<br>
 
 ## 2. PDF Parsing (`2-dataparsingpdf.ipynb`)
 ### Imports
@@ -71,10 +96,17 @@ pages = loader.load()
 ```
 ### What They Do
 *   `PyPDFLoader`: Simple, pure Python loader that extracts text page-by-page.
-*   `PyMuPDFLoader`: C-based, high-accuracy PDF text extractor. **Extremely fast** and better at handling complex multi-column layouts and images.
-*   **Key Concept**: PyMuPDF is much faster. Always implement a text cleaning step to fix ligatures (`ﬁ`, `ﬂ`) and extra spaces injected during parsing.
+*   `PyMuPDFLoader`: C-based, high-accuracy PDF text extractor. <mark style="background-color: #d4edda; color: #155724; padding: 2px 4px; border-radius: 4px;">Extremely fast (10x faster than PyPDF)</mark> and superior at multi-column layout parsing.
+
+### 💡 Advanced Best Practices & Key Insights:
+*   **Ligature & Whitespace Cleaning**: Raw PDF text often contains ligatures (`ﬁ`, `ﬂ`) or whitespace artifacts. Always run regex cleaning (`re.sub(r'\s+', ' ', text)`) post-ingestion.
+*   **Scanned PDFs**: For image-based PDFs, standard loaders fail. Use OCR tools like `pdf2image` + `pytesseract` or `UnstructuredPDFLoader` with OCR strategy.
+
+<br>
 
 ---
+
+<br>
 
 ## 3. Word Document Parsing (`3-dataparsingdoc.ipynb`)
 ### Imports
@@ -89,15 +121,25 @@ loader = Docx2txtLoader("data/sample.docx")
 docs = loader.load()
 
 # Element-based structured extraction
-unstructured_loader = UnstructuredWordDocumentLoader("data/sample.docx", mode="elements", strategy="fast")
+unstructured_loader = UnstructuredWordDocumentLoader(
+    "data/sample.docx", 
+    mode="elements", 
+    strategy="fast"
+)
 element_docs = unstructured_loader.load()
 ```
 ### What They Do
 *   `Docx2txtLoader`: Fast, lightweight loader that extracts plain text from `.docx` files.
-*   `UnstructuredWordDocumentLoader`: Uses the `unstructured` library to partition documents into elements (Titles, NarrativeText, Tables). Using `mode="elements"` yields separate documents per logical section.
-*   **Key Concept**: Use `Docx2txtLoader` for simple files, and `Unstructured` (with `strategy="fast"`) if you need to filter out headers/footers/page numbers by category metadata.
+*   `UnstructuredWordDocumentLoader`: Partitions documents into granular logical elements (`Title`, `NarrativeText`, `Table`).
+
+### 💡 Advanced Best Practices & Key Insights:
+*   **Header/Footer Exclusion**: Use `UnstructuredWordDocumentLoader` with `mode="elements"` to filter out repeating header/footer noise from indexing.
+
+<br>
 
 ---
+
+<br>
 
 ## 4. CSV & Excel Structured Parsing (`4-csvexcelparsing.ipynb`)
 ### Imports
@@ -114,10 +156,16 @@ docs = loader.load()
 ### What They Do
 *   `CSVLoader`: Creates a Document object for each row of a CSV, writing columns as key-value text lines.
 *   `UnstructuredExcelLoader`: Loads sheets and tables as text elements.
-*   `pandas.DataFrame`: Used for custom CSV/Excel processing before converting to LangChain Documents.
-*   **Key Concept**: Avoid embedding huge database-like tables row-by-row in a vector store. Convert rows to structured natural language summaries (e.g., `"Product X is category Y priced at Z"`) for better retrieval.
+*   `pandas.DataFrame`: Used for custom CSV/Excel pre-processing before converting to LangChain Documents.
+
+### 💡 Advanced Best Practices & Key Insights:
+*   **Tabular Anti-Pattern**: Avoid indexing huge tables row-by-row into vector stores. Instead, format rows into rich natural language summaries (`"Product X belongs to Category Y with price $Z"`) for drastically better semantic retrieval.
+
+<br>
 
 ---
+
+<br>
 
 ## 5. JSON Parsing (`5-jsonparsing.ipynb`)
 ### Imports
@@ -127,14 +175,24 @@ from langchain_community.document_loaders import JSONLoader
 ### How to Use
 ```python
 # Load specific values from nested JSON using jq path queries
-loader = JSONLoader("data/company.json", jq_schema=".employees[].role", text_content=True)
+loader = JSONLoader(
+    "data/company.json", 
+    jq_schema=".employees[].role", 
+    text_content=True
+)
 docs = loader.load()
 ```
 ### What They Do
-*   `JSONLoader`: Loads JSON/JSONL files. Uses a `jq_schema` path filter to extract specific nested attributes/fields as separate Documents.
-*   **Key Concept**: Avoid embedding raw JSON syntax symbols (`{}[]"`). Construct clean natural language summaries for indexing, and keep raw JSON fields in metadata for precise filtering.
+*   `JSONLoader`: Extracts specific JSON elements using `jq` path syntax (`.employees[].role`).
+
+### 💡 Advanced Best Practices & Key Insights:
+*   **JSON Noise Reduction**: Embed only human-readable descriptive values (`text_content=True`). Store structural JSON metadata (IDs, foreign keys) in the Document `metadata` dict for exact filtering.
+
+<br>
 
 ---
+
+<br>
 
 ## 6. Database Parsing (`6-databaseparsing.ipynb`)
 ### Imports
@@ -150,11 +208,17 @@ loader = SQLDatabaseLoader(query="SELECT name, role FROM employees", db=db)
 docs = loader.load()
 ```
 ### What They Do
-*   `SQLDatabase`: Connects to relational databases (SQLite, PostgreSQL, etc.) and provides DDL schema metadata.
-*   `SQLDatabaseLoader`: Runs queries on a database and loads each row as a LangChain Document.
-*   **Key Concept**: Embedding an entire relational database is an anti-pattern. Instead, use a Text-to-SQL agent workflow (passing DDL schemas to LLM) or connect using SQL connections with strict **Read-Only** permissions.
+*   `SQLDatabase`: Connects to relational databases (SQLite, PostgreSQL, MySQL) and exposes DDL schema metadata.
+*   `SQLDatabaseLoader`: Executes queries and maps SQL result rows into LangChain Document objects.
+
+### 💡 Advanced Best Practices & Key Insights:
+*   **Security & Read-Only Access**: Never connect a Text-to-SQL or database ingestion agent using write/delete database credentials. Always scope SQL users to strictly <mark style="background-color: #f8d7da; color: #721c24; padding: 2px 4px; border-radius: 4px;">READ-ONLY</mark> permissions.
+
+<br>
 
 ---
+
+<br>
 
 ## 7. Embedding Models (`7.0-embedding.ipynb` & `7.1-openaiembeddings.ipynb`)
 ### Imports
@@ -180,7 +244,11 @@ vector_docs = openai_embeddings.embed_documents(["doc chunk 1", "doc chunk 2"])
     *   `embed_query(single_text)`: Embeds the user query (search phase).
 *   **Key Concept**: Cosine similarity measures the angle between vectors to check document similarity, bypassing issues with document length variance.
 
+<br>
+
 ---
+
+<br>
 
 ## 8. Vector Databases (`8.1` - `8.4`)
 
@@ -561,12 +629,25 @@ query_rag_lcel("What are the key concepts in reinforcement learning?")
 ```
 
 #### 3. Conversational RAG Chain (With History/Memory)
-'''  (compare to Modern RAG Chain below only 2 things are different 1. the history-aware retriever and 2. the chat history placeholder in the prompt)'''
+# Document Retrival & Chain Construction
+from langchain.chains import create_history_aware_retriever, create_retrieval_chain
+from langchain.chains.combine_documents import create_stuff_documents_chain
 
-To support multi-turn conversation and resolve pronouns (e.g. "what are its uses?"), we use a history-aware retriever.
+# Local Vector Database & Embeddings
+from langchain_chroma import Chroma
+from langchain_openai import OpenAIEmbeddings
+```
 
+#### How to Use (Conversational RAG with Chat History)
 ```python
-# 1. Create a prompt for reformulating the question
+# 1. Setup Vector Store Retriever & LLM
+embedding = OpenAIEmbeddings(model="text-embedding-3-small")
+vector_store = Chroma(persist_directory="./chroma_db", embedding_function=embedding)
+retriever = vector_store.as_retriever(search_kwargs={"k": 3})
+
+llm = init_chat_model("gpt-4o-mini", model_provider="openai")
+
+# 2. Contextualize Question Prompt
 contextualize_q_system_prompt = """Given a chat history and the latest user question 
 which might reference context in the chat history, formulate a standalone question 
 which can be understood without the chat history. Do NOT answer the question, 
@@ -578,12 +659,12 @@ contextualize_q_prompt = ChatPromptTemplate.from_messages([
     ("human", "{input}"),
 ])
 
-# 2. Create the history-aware retriever
+# 3. Create History-Aware Retriever
 history_aware_retriever = create_history_aware_retriever(
     llm, retriever, contextualize_q_prompt
 )
 
-# 3. Create a document chain with history
+# 4. Answer Generation Prompt
 qa_system_prompt = """You are an assistant for question-answering tasks. 
 Use the following pieces of retrieved context to answer the question. 
 If you don't know the answer, just say that you don't know. 
@@ -597,18 +678,12 @@ qa_prompt = ChatPromptTemplate.from_messages([
     ("human", "{input}"),
 ])
 
+# 5. Build Complete Conversational RAG Chain
 question_answer_chain = create_stuff_documents_chain(llm, qa_prompt)
-
-# 4. Create conversational RAG chain
 conversational_rag_chain = create_retrieval_chain(
     history_aware_retriever, 
     question_answer_chain
 )
-
-# 5. Invoke conversational RAG chain
-chat_history = []
-
-# First question
 result1 = conversational_rag_chain.invoke({
     "chat_history": chat_history,
     "input": "What is machine learning?"
