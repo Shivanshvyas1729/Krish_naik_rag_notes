@@ -435,6 +435,30 @@ class ChromaVectorStoreManager:
 *   `Chroma(persist_directory=self.persitent_dir, embedding_function=self.embedding)`: Re-instantiates and loads the saved vector store from disk without re-embedding text chunks.
 *   `db.similarity_search(query, k=3)`: Retrieves top-k relevant document chunks based on vector closeness.
 
+#### ➕ Adding New Data to Existing Vector Store (Incremental Ingestion)
+Once a vector database has been created, you do **not** need to recreate it from scratch to add new documents or texts. You can dynamically insert new data using `add_documents()` or `add_texts()`:
+
+```python
+from langchain_core.documents import Document
+
+# Load existing vector store
+db = manager.load_vector_store()
+
+# Option A: Adding new Document objects (with metadata)
+new_docs = [
+    Document(page_content="New chunk content 1", metadata={"source": "news_api", "category": "tech"}),
+    Document(page_content="New chunk content 2", metadata={"source": "news_api", "category": "finance"})
+]
+# Automatically embeds chunks and persists to disk
+added_ids = db.add_documents(new_docs)
+
+# Option B: Adding raw text strings directly
+added_ids = db.add_texts(
+    texts=["Raw string 1 to embed", "Raw string 2 to embed"],
+    metadatas=[{"author": "Alice"}, {"author": "Bob"}]
+)
+```
+
 #### Metadata Pre-filtering & CRUD Operations
 ```python
 # 1. Metadata Pre-Filtering Search
