@@ -86,6 +86,7 @@ LangChain v1.1 decouples provider-specific code from application logic using a u
 ---
 
 ### 3. `3-tools.ipynb` – Tool Anatomy, Schemas & Both Tool Binding Methods
+<img width="1024" height="559" alt="image" src="https://github.com/user-attachments/assets/82017e3a-16fe-48eb-8943-f38efc611922" />
 
 #### 🧠 Theory & Core Concepts
 A **Tool** is a pairing of:
