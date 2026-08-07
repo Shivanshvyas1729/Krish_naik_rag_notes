@@ -1,7 +1,7 @@
 # Krish_naik_rag_notes
 
 <details><summary>08_langchain_updated_version1.1 (LangChain v1.1 & LangGraph Agent Architecture)</summary>
-
+detailed ->   https://github.com/Shivanshvyas1729/Krish_naik_rag_notes/blob/main/langchain_updates.1.1.md
 # LangChain v1.1 & LangGraph Agent Architecture
 
 This module contains modern, production-grade implementations and detailed theoretical notes on the **LangChain v1.1 / 1.x API** built on top of the **LangGraph** execution engine.
