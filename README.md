@@ -1,4 +1,85 @@
 # Krish_naik_rag_notes
+
+<details><summary>08_langchain_updated_version1.1 (LangChain v1.1 & LangGraph Agent Architecture)</summary>
+
+# LangChain v1.1 & LangGraph Agent Architecture
+
+This module contains modern, production-grade implementations of the **LangChain v1.1 / 1.x API** built on the **LangGraph** execution engine.
+
+---
+
+## 📚 Notebook Overview & Key Concepts
+
+| Notebook | Topic & Core Focus | Key LangChain v1.1 APIs Used |
+| :--- | :--- | :--- |
+| **`1-langchainintro.ipynb`** | Agent Foundations & Tool Calling | `create_agent()`, `@tool`, `agent.invoke()` |
+| **`2-modelintegration.ipynb`** | Universal Model Provider Loading | `init_chat_model()`, `ChatOpenAI()`, `ChatGroq()`, `ChatGoogleGenerativeAI()` |
+| **`3-tools.ipynb`** | Tool Definition & Model Binding | `@tool`, `model.bind_tools()`, `ai_msg.tool_calls` |
+| **`4-messages.ipynb`** | Canonical Message Schema | `SystemMessage`, `HumanMessage`, `AIMessage`, `ToolMessage` |
+| **`5-structuredoutput.ipynb`** | Schema Enforcement | `with_structured_output()`, `response_format`, `Pydantic`, `TypedDict` |
+| **`6-middleware.ipynb`** | Agent Middleware & Checkpoints | `SummarizationMiddleware`, `HumanInTheLoopMiddleware`, `InMemorySaver`, `Command` |
+
+---
+
+## 🛠️ Key Technical Highlights
+
+### 1. High-Level Agent Instantiation (`create_agent`)
+```python
+from langchain.agents import create_agent
+from langchain_core.tools import tool
+
+@tool
+def get_weather(city: str) -> str:
+    """Get the weather for a city."""
+    return f"The weather in {city} is sunny."
+
+agent = create_agent(
+    model="gpt-4o-mini",
+    tools=[get_weather],
+    system_prompt="You are a helpful assistant."
+)
+
+result = agent.invoke({"messages": [{"role": "user", "content": "What is the weather in New York?"}]})
+```
+
+### 2. Multi-Provider Universal Model Initializer (`init_chat_model`)
+```python
+from langchain.chat_models import init_chat_model
+
+model_openai = init_chat_model("gpt-4o-mini")
+model_groq = init_chat_model("groq:llama-3.3-70b-versatile")
+model_gemini = init_chat_model("google_genai:gemini-1.5-flash")
+```
+
+### 3. Native Schema Enforcement
+```python
+from pydantic import BaseModel, Field
+from typing_extensions import TypedDict, Annotated
+
+class Movie(BaseModel):
+    title: str = Field(description="The title of the movie")
+    year: int = Field(description="The release year")
+
+structured_model = model.with_structured_output(Movie)
+```
+
+### 4. Stateful Middleware & Human-in-the-Loop Operations
+```python
+from langchain.agents import create_agent
+from langchain.agents.middleware import SummarizationMiddleware, HumanInTheLoopMiddleware
+from langgraph.checkpoint.memory import InMemorySaver
+
+agent = create_agent(
+    model="gpt-4o-mini",
+    checkpointer=InMemorySaver(),
+    middleware=[
+        SummarizationMiddleware(model="gpt-4o-mini", trigger=("messages", 10), keep=("messages", 4))
+    ]
+)
+```
+
+</details>
+
 <details><summary>Rag</summary>
 
 
@@ -1027,4 +1108,5 @@ flowchart TD
 | **Reasoning Model** | Text LLM (GPT-3.5/4) | Vision LLM (GPT-4o / GPT-4 Vision) |
 
 </details>
+
 

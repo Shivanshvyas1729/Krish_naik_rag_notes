@@ -1,11 +1,138 @@
 # RAG (Retrieval-Augmented Generation) Comprehensive Notes - Part 2
 
+<details>
+<summary><b>LangChain v1.1 Architecture & Modern Agent Concepts (08_langchain_updated_version1.1)</b></summary>
+
+## 🚀 LangChain v1.1 Core Innovations
+
+LangChain v1.1 / 1.x introduces streamlined APIs for building LLM agents, unified model initialization, structured output enforcement, and middleware support built on top of the LangGraph execution engine.
+
+---
+
+### 1. High-Level Agent Factory (`create_agent`)
+
+The `create_agent` function from `langchain.agents` replaces complex manual `AgentExecutor` setups by constructing a stateful agent graph powered by LangGraph under the hood:
+
+```python
+from langchain.agents import create_agent
+from langchain_core.tools import tool
+
+@tool
+def get_weather(city: str) -> str:
+    """Get the weather for a city."""
+    return f"The weather in {city} is sunny."
+
+agent = create_agent(
+    model="gpt-4o-mini",
+    tools=[get_weather],
+    system_prompt="You are a helpful assistant."
+)
+
+# Invocation accepts messages in OpenAI or LangChain format
+response = agent.invoke({"messages": [{"role": "user", "content": "What is the weather in New York?"}]})
+print(response["messages"])
+```
+
+---
+
+### 2. Universal Model Initialization (`init_chat_model`)
+
+Instead of importing provider-specific classes directly, `init_chat_model` provides a single entry point to instantiate any supported LLM across providers (`openai`, `groq`, `google_genai`, etc.):
+
+```python
+from langchain.chat_models import init_chat_model
+
+# OpenAI
+model_openai = init_chat_model("gpt-4o-mini")
+
+# Groq
+model_groq = init_chat_model("groq:llama-3.3-70b-versatile")
+
+# Google GenAI
+model_gemini = init_chat_model("google_genai:gemini-1.5-flash")
+```
+
+---
+
+### 3. Canonical Message Lifecycle & Tool Calls
+
+LangChain v1.1 uses standardized message classes for clear chat state representation:
+
+- `SystemMessage`: Governs instructions and agent persona.
+- `HumanMessage`: Represents user input prompts.
+- `AIMessage`: Contains model responses, optional reasoning tokens, and `tool_calls` payloads.
+- `ToolMessage`: Holds results returned by executed tools, matching the `tool_call_id`.
+
+```python
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, ToolMessage
+
+messages = [
+    SystemMessage("You are a helpful assistant."),
+    HumanMessage("What is the weather in San Francisco?"),
+    AIMessage(content="", tool_calls=[{"name": "get_weather", "args": {"location": "San Francisco"}, "id": "call_123"}]),
+    ToolMessage(content="Sunny, 72°F", tool_call_id="call_123")
+]
+```
+
+---
+
+### 4. Enforced Structured Outputs (`with_structured_output` & `response_format`)
+
+LangChain v1.1 provides native schema binding using **Pydantic**, **TypedDict**, or **Dataclasses**:
+
+```python
+from pydantic import BaseModel, Field
+from typing_extensions import TypedDict, Annotated
+
+# Option A: Pydantic Schema
+class Movie(BaseModel):
+    title: str = Field(description="Title of the movie")
+    year: int = Field(description="Release year")
+
+structured_model = model.with_structured_output(Movie)
+
+# Option B: TypedDict with Field Metadata
+class MovieDict(TypedDict):
+    title: Annotated[str, Field(description="Title of the movie")]
+    year: Annotated[int, Field(description="Release year")]
+
+structured_dict_model = model.with_structured_output(MovieDict)
+```
+
+---
+
+### 5. Agent Middleware System (`SummarizationMiddleware` & `HumanInTheLoopMiddleware`)
+
+Middleware layers allow intercepting agent steps for memory management and human approval:
+
+```python
+from langchain.agents import create_agent
+from langchain.agents.middleware import SummarizationMiddleware, HumanInTheLoopMiddleware
+from langgraph.checkpoint.memory import InMemorySaver
+
+# Automatic Message History Summarization
+agent = create_agent(
+    model="gpt-4o-mini",
+    checkpointer=InMemorySaver(),
+    middleware=[
+        SummarizationMiddleware(
+            model="gpt-4o-mini",
+            trigger=("messages", 10), # Summarize after 10 messages
+            keep=("messages", 4)       # Keep latest 4 messages
+        )
+    ]
+)
+```
+
+</details>
+
 ---
 
 ## 📋 Table of Contents
 
-13. [Multimodal RAG (`07_multimodle RAG`)](#13-multimodal-rag-07_multimodle-rag)
-    * [13.1 Multimodal RAG with OpenAI (GPT-4o) & CLIP Joint Embeddings (`1-multimodalopenai.ipynb`)](#131-multimodal-rag-with-openai-gpt-4o--clip-joint-embeddings-1-multimodalopenaiipynb)
+1. [LangChain v1.1 Architecture (`08_langchain_updated_version1.1`)](#langchain-v11-architecture--modern-agent-concepts-08_langchain_updated_version11)
+2. [Multimodal RAG (`07_multimodle RAG`)](#13-multimodal-rag-07_multimodle-rag)
+    * [Multimodal RAG with OpenAI (GPT-4o) & CLIP Joint Embeddings (`1-multimodalopenai.ipynb`)](#131-multimodal-rag-with-openai-gpt-4o--clip-joint-embeddings-1-multimodalopenaiipynb)
 
 ---
 
@@ -72,7 +199,7 @@ import base64
 import numpy as np
 import torch
 from PIL import Image, ImageDraw
-import fitz  # PyMuPDF
+import pymupdf  # PyMuPDF
 from dotenv import load_dotenv
 
 # HuggingFace Transformers for CLIP
@@ -126,14 +253,14 @@ features = features / features.norm(dim=-1, keepdim=True)
 <details>
 <summary><b>💡 Helper Pattern: Programmatically Generating Synthetic Multimodal Sample PDFs</b></summary>
 
-When developing and testing multimodal RAG pipelines without requiring external sample downloads, you can programmatically generate a synthetic PDF containing both text and visual image charts using PyMuPDF (`fitz`) and `Pillow`:
+When developing and testing multimodal RAG pipelines without requiring external sample downloads, you can programmatically generate a synthetic PDF containing both text and visual image charts using PyMuPDF (`pymupdf`) and `Pillow`:
 
 ```python
 def ensure_sample_pdf(pdf_path="multimodal_sample.pdf"):
     if os.path.exists(pdf_path):
         return pdf_path
     
-    doc = fitz.open()
+    doc = pymupdf.open()
     page = doc.new_page()
     
     # 1. Add text elements
@@ -151,7 +278,7 @@ def ensure_sample_pdf(pdf_path="multimodal_sample.pdf"):
     # 3. Stream image bytes to PDF page
     img_bytes = io.BytesIO()
     img.save(img_bytes, format='PNG')
-    page.insert_image(fitz.Rect(50, 150, 350, 300), stream=img_bytes.getvalue())
+    page.insert_image(pymupdf.Rect(50, 150, 350, 300), stream=img_bytes.getvalue())
     
     doc.save(pdf_path)
     doc.close()
@@ -247,9 +374,66 @@ clip_embedder = CLIPEmbeddings(clip_model, clip_processor)
 ```
 
 #### 2. Parsing PDF Text & Extracting Filtered Images (`PyMuPDF`)
+
+##### 🚀 Modern Simplified Method (Recommended)
 ```python
 # Open PDF document
-doc = fitz.open("multimodal_sample.pdf")
+doc = pymupdf.open("multimodal_sample.pdf")
+
+all_docs = []
+all_embeddings = []
+image_data_store = {}
+
+splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=100)
+
+for i, page in enumerate(doc):
+    # 1. Process text content (simplified via create_documents)
+    text = page.get_text()
+    if text.strip():
+        text_chunks = splitter.create_documents(
+            texts=[text], 
+            metadatas=[{"page": i, "type": "text"}]
+        )
+        all_docs.extend(text_chunks)
+        all_embeddings.extend([clip_embedder.embed_text(c.page_content) for c in text_chunks])
+
+    # 2. Extract visual image elements
+    for img_idx, img in enumerate(page.get_images(full=True)):
+        try:
+            xref = img[0]
+            base_img = doc.extract_image(xref)
+            image_bytes = base_img["image"]
+            
+            # Convert to PIL Image for dimension filtering & embedding
+            pil_img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+            
+            # 🔹 RULE OF THUMB: Filter graphic noise (icons, bullet dots, lines)
+            if pil_img.width < 50 or pil_img.height < 50:
+                continue
+                
+            img_id = f"page_{i}_img_{img_idx}"
+            
+            # Store base64 directly from extracted PDF image bytes (no re-encoding needed!)
+            image_data_store[img_id] = base64.b64encode(image_bytes).decode()
+            
+            # Compute CLIP embedding for image & store document
+            all_embeddings.append(clip_embedder.embed_image(pil_img))
+            all_docs.append(Document(
+                page_content=f"[Image: {img_id}]",
+                metadata={"page": i, "type": "image", "image_id": img_id}
+            ))
+        except Exception as e:
+            print(f"Error processing image {img_idx} on page {i}: {e}")
+
+doc.close()
+```
+
+<details>
+<summary><b>Older Method: Manual Document Creation & Buffer Re-encoding</b></summary>
+
+```python
+# Open PDF document
+doc = pymupdf.open("multimodal_sample.pdf")
 
 all_docs = []
 all_embeddings = []
@@ -296,6 +480,7 @@ for i, page in enumerate(doc):
 
 doc.close()
 ```
+</details>
 
 #### 3. Building Unified Vector Store (`FAISS`)
 ```python
@@ -370,7 +555,7 @@ print(response_text)
 ### What They Do
 *   `CLIPModel` & `CLIPProcessor` (`openai/clip-vit-base-patch32`): Multi-modal neural network that projects text strings and image pixels into the **same shared 512-dimensional vector space**, enabling cross-modal text-to-image similarity search.
 *   `CLIPEmbeddings`: Custom subclass of `langchain_core.embeddings.Embeddings`. Wraps CLIP text and image encoding methods into LangChain standard `embed_documents` and `embed_query` contracts.
-*   `PyMuPDF` (`fitz`): C-accelerated PDF parser. Performs rapid page text extraction and binary image stream extraction (`doc.extract_image`).
+*   `PyMuPDF` (`pymupdf`): C-accelerated PDF parser. Performs rapid page text extraction and binary image stream extraction (`doc.extract_image`).
 *   `Image Dimension Filter`: <mark style="background-color: #d4edda; color: #155724; padding: 2px 4px; border-radius: 4px;">Crucial pre-processing step</mark>. Discards images with `width < 50` or `height < 50` pixels to eliminate bullet points, lines, background fills, and UI icons from polluting vector search.
 *   `FAISS.from_embeddings`: Vector database index initialized with pre-computed text and image embedding tuples `(content, embedding_vector)` alongside custom metadata.
 *   `ChatOpenAI(model="gpt-4o")`: OpenAI's flagship multimodal model capable of reading and reasoning over both text strings and high-resolution images.
