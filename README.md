@@ -1107,6 +1107,110 @@ flowchart TD
 | **Retrieval Type** | Text-to-Text | Cross-Modal (Text-to-Image & Text-to-Text) |
 | **Reasoning Model** | Text LLM (GPT-3.5/4) | Vision LLM (GPT-4o / GPT-4 Vision) |
 
+<img width="774" height="1024" alt="image" src="https://github.com/user-attachments/assets/4dba0baa-9a14-40e6-8d7b-865780a09e88" />
+
+
 </details>
 
 
+
+<details><summary>      AI Agents vs. Agentic AI      </summary>
+
+
+## Key Definitions
+
+* **AI Agents:** Individual, task-specific software programs designed to carry out dedicated tasks autonomously with minimal to no human intervention.
+* **Agentic AI:** A broader system framework where multiple AI agents collaborate, adapt, and make complex decisions independently to achieve large-scale goals.
+
+---
+
+## Core Differences
+
+| Feature | AI Agents | Agentic AI |
+| --- | --- | --- |
+| **Scope & Architecture** | Single entity focused on a specific task. | Network of collaborating agents working across complex workflows. |
+| **Functionality & Autonomy** | Handles predefined tasks with limited autonomy. | Focuses on overall system optimization with high flexibility. |
+| **Decision-Making** | Relies on predefined rules and rigid boundaries. | Makes autonomous decisions based on real-time data and circumstances. |
+| **Adaptability** | Operates strictly within given parameters. | Continuous learning, reasoning, and adapting over time from experience. |
+
+---
+
+## Core Operational Loop of Agentic AI
+
+1. **Perception:** Gathers and processes data from the surrounding environment.
+2. **Reasoning:** Analyzes the context to understand current events and goals.
+3. **Action:** Executes specific targeted actions based on conclusions.
+4. **Learning:** Evaluates feedback and improves system performance over time.
+
+---
+
+## Technical Components (Architecture)
+
+* **Brain / Reasoning Engine:** Large Language Models (LLMs) that process instructions, plan steps, and drive decisions.
+* **Tools & Execution:** External tools and APIs used to perform actions (e.g., search tools, software integration).
+* **Databases & Memory:** Historical context and data storage for recall and continuous learning.
+
+---
+
+## Practical Examples
+
+### AI Agents
+
+* **Customer Service Chatbots:** Handles standard queries or balance inquiries within set script parameters.
+* **Automated Banking Bots:** Performs specific transactions following clearly defined, rigid procedures.
+
+### Agentic AI
+
+* **Smart Home Systems:** Networks multiple devices (lights, thermostat, appliances) to optimize power usage, security, and climate based on real-time habits.
+* **Personalized Health Assistants:** Analyzes complete patient medical history, real-time vital metrics, and lifestyle factors while updating recommendations as new medical research emerges.
+</details>
+
+
+<details><summary>   example why we need agentic ai  ( Software Development Workflow & Agentic AI Systems)  </summary>
+--
+
+
+## 1. Traditional Agile Software Development Workflow
+
+* **Projects (e.g., XYZ Company):**
+1. **Requirement Gathering:** Handled by Business Analysts and Product Managers.
+2. **Sprint Planning:** Execution using the Agile process framework.
+3. **Developer Teams:** Manual implementation and task assignment across human developers.
+
+
+
+---
+
+## 2. Agentic AI System Overview
+
+* **Core Concept:** Integrating Large Language Models (LLMs) and autonomous AI Agents into software development to automate tasks from requirement breakdown to code generation and testing.
+* **Key Components:**
+* **Requirements Processing:** Inputs (business requirements) are processed by an LLM-driven system to generate structured tasks.
+* **Task Decomposition:** High-level requirements are split into discrete sub-tasks:
+* **Task 1** $\rightarrow$ **Dev 1 Agent**
+* **Task 2** $\rightarrow$ **Dev 2 Agent**
+* **Task 3** $\rightarrow$ **Dev 3 Agent**
+
+
+
+
+
+---
+
+## 3. Agentic Workflow Execution & Features
+
+* **AI Developers (Dev 1, Dev 2, Dev 3):** Autonomous AI agents executing code implementation based on assigned sub-tasks.
+* **Automated Quality Assurance & Engineering:**
+* **Code Review:** Autonomous evaluation of generated code quality and standards.
+* **Testing & Bug Reporting:** Automated test execution with feedback loops to raise bugs.
+* **Prompt Engineering:** Refinement of system prompts to optimize code output quality.
+
+
+* **Human Intervention & Feedback (Human-in-the-Loop):**
+* Human oversight is integrated into critical decision points to maintain high **accuracy** and ensure compliance with business requirements.
+
+
+* **Use Cases / Applications Mentioned:**
+* Coding projects
+* Blog generation systems
+</details>
