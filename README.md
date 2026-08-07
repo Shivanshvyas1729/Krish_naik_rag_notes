@@ -113,16 +113,27 @@ from langchain_core.tools import tool
 
 @tool
 def get_weather(city: str) -> str:
-    # Get the weather for a city
+    """Get the weather for a city."""
     return f"The weather in {city} is sunny."
 
 model = init_chat_model("gpt-4o-mini")
 model_with_tools = model.bind_tools([get_weather])
 
-# Generates tool call payload in ai_msg.tool_calls for developer-managed execution
-ai_msg = model_with_tools.invoke("What's the weather in Boston?")
-print(ai_msg.tool_calls)
-# [{'name': 'get_weather', 'args': {'city': 'Boston'}, 'id': 'call_123'}]
+# Step 1: Model generates tool calls
+messages = [{"role": "user", "content": "What's the weather in Boston?"}]
+ai_msg = model_with_tools.invoke(messages)
+messages.append(ai_msg)
+
+# Step 2: Execute tools and collect results
+for tool_call in ai_msg.tool_calls:
+    # Execute the tool with the generated arguments
+    tool_result = get_weather.invoke(tool_call)
+    messages.append(tool_result)
+
+# Step 3: Pass results back to model for final response
+final_response = model_with_tools.invoke(messages)
+print(final_response.content)
+# "The weather in Boston is sunny."
 ```
 
 ##### Method 2: Automatic Agent Execution Loop (`create_agent(tools=[...])`)
