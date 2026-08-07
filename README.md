@@ -1026,5 +1026,8 @@ flowchart TD
 | **Retrieval Type** | Text-to-Text | Cross-Modal (Text-to-Image & Text-to-Text) |
 | **Reasoning Model** | Text LLM (GPT-3.5/4) | Vision LLM (GPT-4o / GPT-4 Vision) |
 
+<img width="774" height="1024" alt="image" src="https://github.com/user-attachments/assets/4dba0baa-9a14-40e6-8d7b-865780a09e88" />
+
+
 </details>
 
