@@ -1,0 +1,3 @@
+LangChain provides various memory modules for managing conversation state, such as ConversationBufferMemory, ConversationSummaryMemory, and VectorStoreRetrieverMemory. These modules allow LLM applications to retain past context across multiple interaction turns.
+CrewAI is a framework for orchestrating autonomous AI agents. In CrewAI, agents can collaborate by performing specific tasks assigned to them using defined tools and roles.
+LangChain can be integrated with CrewAI to enhance agent capabilities with custom tools and memory components.

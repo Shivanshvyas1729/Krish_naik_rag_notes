@@ -1,6 +1,6 @@
 # Krish_naik_rag_notes
 
-<details><summary>08_langchain_updated_version1.1 (LangChain v1.1 & LangGraph Agent Architecture)</summary>
+<details><summary>08_langchain_updated_version1.1 — Needed for stateful agent workflows, streaming, tool binding & graph-based execution</summary>
 detailed ->   https://github.com/Shivanshvyas1729/Krish_naik_rag_notes/blob/main/langchain_updates.1.1.md
 # LangChain v1.1 & LangGraph Agent Architecture
 
@@ -281,7 +281,7 @@ agent = create_agent(
 
 </details>
 
-<details><summary>Rag</summary>
+<details><summary>RAG (Retrieval-Augmented Generation) — Needed to ground LLM responses with private/up-to-date knowledge and prevent hallucinations</summary>
 
 
 # Study Notes: Retrieval-Augmented Generation (RAG)
@@ -355,7 +355,7 @@ The process is broken down into three distinct phases:
 
 
 
-<details><summary>fine tunning vs rag </summary>
+<details><summary>Fine-Tuning vs. RAG — Needed to decide between adapting LLM style/tone (Fine-Tuning) vs. injecting dynamic external knowledge (RAG)</summary>
 
 
 ---
@@ -495,7 +495,7 @@ A comparison of the three primary ways to customize Large Language Models (LLMs)
 
 
 
-<details><summary>Vector store / vector databases</summary>
+<details><summary>Vector Store vs. Vector Databases — Needed for high-dimensional embedding storage and fast semantic similarity search at scale</summary>
 
 # Study Notes: Vector Stores vs. Vector Databases
 
@@ -584,7 +584,7 @@ A full-featured database system designed for managing and querying vector data a
 
 
 Semantic Chunking is a text-splitting technique that divides content based on meaning instead of fixed size or paragraphs.
-<details><summary>sementic chunking </summary>
+<details><summary>Semantic Chunking — Needed to split documents by topic/meaning boundaries instead of fixed token lengths to preserve context</summary>
   
 **Semantic Chunking**:
 
@@ -630,7 +630,7 @@ Given the input text:
 
 
 
-<details><summary>Dense+Sparse retrival</summary>
+<details><summary>Dense + Sparse Retrieval (Hybrid Search) — Needed to combine keyword accuracy (BM25) with semantic intent (Embeddings) for robust search</summary>
 
 
 ## Hybrid Search Strategies: Dense & Sparse Retrieval
@@ -711,7 +711,7 @@ Hybrid search calculates a final score by combining the dense and sparse scores 
 
 You can find the documentation in the [Text Representation tech. Repo](https://github.com/Shivanshvyas1729/pydantic_notes/blob/main/nlp/Text%20Representation%20tech.md).
 
-<details><summary>Reranking </summary>
+<details><summary>Reranking — Needed to re-order initial retrieved documents using cross-encoders to improve precision and eliminate false positives</summary>
 ## Study Notes: Hybrid Search Strategies & Re-Ranking Techniques
 <img width="537" height="641" alt="image" src="https://github.com/user-attachments/assets/68528d95-1e6b-41b5-86c4-ad2136e86cb0" />
 
@@ -770,7 +770,7 @@ The workflow is divided into three distinct stages:
 
 </details>
 
-<details><summary>MMR (Maximal Marginal Relevance )</summary>
+<details><summary>MMR (Maximal Marginal Relevance) — Needed to balance document relevance with diversity and prevent retrieving duplicate context</summary>
 
 
 
@@ -860,7 +860,7 @@ $$\text{MMR}(D3) = (0.7 \cdot 0.80) - (0.3 \cdot 0.30) = 0.560 - 0.090 = \mathbf
 </details>
 
 
-<details><summary>Query Expansion Technique </summary>
+<details><summary>Query Expansion Technique — Needed to generate query variations and synonyms to catch documents using different phrasing</summary>
 
  **Query Expansion Technique** 
 
@@ -911,7 +911,7 @@ $$\text{Better Query} \longrightarrow \text{Better Retrieved Chunks} \longrighta
 </details>
 
 
-<details><summary>Query Decomposition</summary>
+<details><summary>Query Decomposition — Needed to break complex, multi-part questions into simpler sub-queries for targeted multi-step retrieval</summary>
   
  **Query Decomposition** 
 
@@ -966,7 +966,7 @@ $$\text{Better Query} \longrightarrow \text{Better Retrieved Chunks} \longrighta
 </details>
 
 
-<details><summary>HyDE Technique</summary>
+<details><summary>HyDE (Hypothetical Document Embeddings) — Needed to bridge vocabulary gaps in short/vague queries by embedding LLM-generated hypothetical answers</summary>
 **Hypothetical Document Embeddings (HyDE)** :
 
 ---
@@ -1021,7 +1021,7 @@ HyDE is especially useful when:
 
 </details>
 
-<details><summary>Multimodal AI</summary>
+<details><summary>Multimodal AI — Needed to process and integrate heterogeneous data formats (text, images, audio, tables) in unified LLM workflows</summary>
 
 
 <img width="692" height="915" alt="image" src="https://github.com/user-attachments/assets/bf8314b0-7b20-41c0-a098-f93f49f12c80" />
@@ -1067,7 +1067,7 @@ HyDE is especially useful when:
 
 ---
 
-<details><summary>More Detail</summary>
+<details><summary>More Detail — Deep Dive into Classic Parsing vs. Visual-Native (ColPali) Architecture</summary>
 
 ---
 
@@ -1233,7 +1233,7 @@ HyDE is especially useful when:
 </details>
 
 
-<details><summary>Multimodal RAG & Multimodal AI Architecture</summary>
+<details><summary>Multimodal RAG & AI Architecture — Needed to index and retrieve image-rich documents, charts, and visual PDFs (e.g., CLIP / ColPali)</summary>
 
 # Multimodal RAG & Multimodal AI
 
@@ -1315,7 +1315,7 @@ flowchart TD
 
 
 
-<details><summary>      AI Agents vs. Agentic AI      </summary>
+<details><summary>AI Agents vs. Agentic AI — Needed to distinguish simple tool-calling bots from autonomous, goal-driven, multi-step agent systems</summary>
 
 
 ## Key Definitions
@@ -1367,7 +1367,7 @@ flowchart TD
 </details>
 
 
-<details><summary>   example why we need agentic ai  ( Software Development Workflow & Agentic AI Systems)  </summary>
+<details><summary>Example: Why We Need Agentic AI (Software Development Workflow) — Needed to demonstrate end-to-end autonomous software development, testing, and deployment automation</summary>
 --
 
 

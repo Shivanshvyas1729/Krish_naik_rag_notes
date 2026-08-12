@@ -1,53 +1,94 @@
-# LangChain v1.1 & LangGraph Agent Architecture (Exhaustive Master Reference)
+# 🦜🔗 LangChain v1.1 & LangGraph Agent Architecture (Exhaustive Master Reference)
 
 ---
 
-## 📋 Overview & Module Index
+## 📋 Table of Contents
+
+- [1. Overview & Workspace Environment](#1-overview--workspace-environment)
+  - [Package Versioning & Canonical Import Conventions](#package-versioning--canonical-import-conventions)
+  - [Module Overview & Feature Matrix](#module-overview--feature-matrix)
+- [2. Module 1: `1-langchainintro.ipynb` – Agent Foundations & Graph Architecture](#2-module-1-1-langchainintroipynb--agent-foundations--graph-architecture)
+  - [Theory: Legacy `AgentExecutor` vs. LangChain v1.1 `create_agent()`](#theory-legacy-agentexecutor-vs-langchain-v11-create_agent)
+  - [Code Walkthrough & Dual Invocation Patterns](#code-walkthrough--dual-invocation-patterns)
+  - [Execution Trajectory State Structure](#execution-trajectory-state-structure)
+- [3. Module 2: `2-modelintegration.ipynb` – Universal Model Initializer, Streaming & Batching](#3-module-2-2-modelintegrationipynb--universal-model-initializer-streaming--batching)
+  - [Universal Factory Initializer (`init_chat_model`)](#universal-factory-initializer-init_chat_model)
+  - [Real-Time Streaming Output (`model.stream()`)](#real-time-streaming-output-modelstream)
+  - [Parallel Batch Processing & Concurrency Control (`model.batch()`)](#parallel-batch-processing--concurrency-control-modelbatch)
+- [4. Module 3: `3-tools.ipynb` – Tool Anatomy, Schemas & Both Tool Binding Methods](#4-module-3-3-toolsipynb--tool-anatomy-schemas--both-tool-binding-methods)
+  - [Anatomy of a Tool & `@tool` Decorator](#anatomy-of-a-tool--tool-decorator)
+  - [Feature Comparison: Method 1 vs. Method 2](#feature-comparison-method-1-vs-method-2)
+  - [Method 1: Direct Model Binding & 3-Step Manual Loop](#method-1-direct-model-binding--3-step-manual-loop)
+  - [Method 2: Automatic Agent Graph Execution Loop](#method-2-automatic-agent-graph-execution-loop)
+- [5. Module 4: `4-messages.ipynb` – Canonical Message State & Token Usage Metadata](#5-module-4-4-messagesipynb--canonical-message-state--token-usage-metadata)
+  - [Text Prompts vs. Message Prompts](#text-prompts-vs-message-prompts)
+  - [The 4 Canonical Message Types](#the-4-canonical-message-types)
+  - [Message Trajectory & Token Usage Metadata](#message-trajectory--token-usage-metadata)
+- [6. Module 5: `5-structuredoutput.ipynb` – Schema Enforcement & Output Parsing](#6-module-5-5-structuredoutputipynb--schema-enforcement--output-parsing)
+  - [Deep Dive: TypedDict vs. Pydantic, Runtime Validation & LLM Retry Mechanics](#deep-dive-typeddict-vs-pydantic-runtime-validation--llm-retry-mechanics)
+  - [Schema Enforcers & `include_raw=True` Parameter](#schema-enforcers--include_rawtrue-parameter)
+  - [Nested Pydantic & Nested TypedDict Structures](#nested-pydantic--nested-typeddict-structures)
+  - [TypedDict with `Annotated` Metadata](#typeddict-with-annotated-metadata)
+  - [Agent Integration via `response_format`](#agent-integration-via-response_format)
+- [7. Module 6: `6-middleware.ipynb` – Agent Middleware, Summarization & Human-in-the-Loop](#7-module-6-6-middlewareipynb--agent-middleware-summarization--human-in-the-loop)
+  - [Middleware Architecture Overview](#middleware-architecture-overview)
+  - [Summarization Middleware (`trigger=("messages"|"fraction")`)](#summarization-middleware-triggermessagesfraction)
+  - [Human-in-the-Loop Middleware (`HumanInTheLoopMiddleware`)](#human-in-the-loop-middleware-humanintheloopmiddleware)
+  - [The 3 Human Resumption Decisions (`approve`, `reject`, `edit`)](#the-3-human-resumption-decisions-approve-reject-edit)
+- [8. Appendix: Why CLIP Model & Processor are Essential in Multimodal RAG](#8-appendix-why-clip-model--processor-are-essential-in-multimodal-rag)
+
+---
+
+## 1. Overview & Workspace Environment
 
 This document is the **definitive, production-grade technical manual** for **LangChain v1.1 / 1.x** built on top of the **LangGraph** execution engine. It covers every concept, API signature, parameter, theory note, and code cell across all 6 notebooks in `08_langchain_updated_version1.1`.
 
-### 📦 Workspace Package Versioning & Import Conventions
+> [!NOTE]
+> All implementations in this guide use the latest stable LangChain v1.1 standard APIs. Legacy `AgentExecutor` patterns have been completely replaced with compiled stateful graph agents via `create_agent()`.
+
+### Package Versioning & Canonical Import Conventions
+
 ```python
 import langchain
 print("LangChain Version:", langchain.__version__)  # e.g., 0.3.x / 1.1.x
 ```
 
-- **LangChain Message Imports**: Available via `from langchain.messages import SystemMessage, HumanMessage, AIMessage, ToolMessage` or `from langchain_core.messages import ...`.
-- **Model Initializer**: `from langchain.chat_models import init_chat_model`.
-- **Agent Creator**: `from langchain.agents import create_agent`.
-- **Middleware**: `from langchain.agents.middleware import SummarizationMiddleware, HumanInTheLoopMiddleware`.
-- **Checkpointers**: `from langgraph.checkpoint.memory import InMemorySaver`.
-- **Command Resumption**: `from langgraph.types import Command`.
+- **LangChain Message Classes**: Imported via `from langchain.messages import SystemMessage, HumanMessage, AIMessage, ToolMessage` (or `from langchain_core.messages import ...`).
+- **Universal Model Initializer**: `from langchain.chat_models import init_chat_model`.
+- **Agent Factory**: `from langchain.agents import create_agent`.
+- **Agent Middleware**: `from langchain.agents.middleware import SummarizationMiddleware, HumanInTheLoopMiddleware`.
+- **Graph Checkpointer**: `from langgraph.checkpoint.memory import InMemorySaver`.
+- **Command Signals**: `from langgraph.types import Command`.
 
 ---
 
-## 📚 Master Index of Notebooks & Key Technical APIs
+### Module Overview & Feature Matrix
 
-| Notebook | Topic & Core Focus | Key APIs & Special Parameters Covered |
+| Notebook | Focus & Topics Covered | Key LangChain v1.1 APIs Used |
 | :--- | :--- | :--- |
 | **`1-langchainintro.ipynb`** | Agent Foundations & Stateful Graph Engine | `create_agent()`, `@tool`, `agent.invoke()`, string & list prompts, `response["messages"]` |
-| **`2-modelintegration.ipynb`** | Universal Model Initializer, Multi-Provider, Streaming & Batching | `init_chat_model()`, `ChatOpenAI()`, `ChatGroq()`, `ChatGoogleGenerativeAI()`, `model.stream()`, `model.batch()`, `max_concurrency` |
+| **`2-modelintegration.ipynb`** | Universal Initializer, Provider Integration, Streaming & Batching | `init_chat_model()`, `ChatOpenAI()`, `ChatGroq()`, `ChatGoogleGenerativeAI()`, `model.stream()`, `model.batch()`, `max_concurrency` |
 | **`3-tools.ipynb`** | Tool Definition, Schemas, Manual Loop & Agent Loop | `@tool`, `model.bind_tools()`, `ai_msg.tool_calls`, `get_weather.invoke()`, 3-Step Manual Loop |
-| **`4-messages.ipynb`** | Canonical Message Schema, Text vs. Message Prompts & Token Metadata | `SystemMessage`, `HumanMessage`, `AIMessage`, `ToolMessage`, `tool_call_id`, `usage_metadata`, `response.text` |
+| **`4-messages.ipynb`** | Canonical Messages Lifecycle, Prompts & Token Metadata | `SystemMessage`, `HumanMessage`, `AIMessage`, `ToolMessage`, `tool_call_id`, `usage_metadata`, `response.text` |
 | **`5-structuredoutput.ipynb`** | Enforced Schema Parsing, `include_raw`, Nested Schemas, `model.profile` & Agent `response_format` | `with_structured_output(..., include_raw=True)`, `response_format`, `Pydantic`, `TypedDict`, `Annotated`, `@dataclass`, `model.profile`, `result["structured_response"]` |
-| **`6-middleware.ipynb`** | Agent Middleware, Token Optimization, Summarization & Human-in-the-Loop | `SummarizationMiddleware`, `HumanInTheLoopMiddleware`, `InMemorySaver`, `Command`, `trigger=("messages"|"fraction")`, `interrupt_on={tool: False}`, `allowed_decisions=["approve","edit","reject"]` |
+| **`6-middleware.ipynb`** | Agent Middleware, Memory Summarization & Human-in-the-Loop Operations | `SummarizationMiddleware`, `HumanInTheLoopMiddleware`, `InMemorySaver`, `Command`, `trigger=("messages"|"fraction")`, `interrupt_on={tool: False}`, `allowed_decisions=["approve","edit","reject"]` |
 
 ---
 
-## 📖 Complete Cell-by-Cell Theory & Deep Dives
+## 2. Module 1: `1-langchainintro.ipynb` – Agent Foundations & Graph Architecture
 
----
+### Theory: Legacy `AgentExecutor` vs. LangChain v1.1 `create_agent()`
 
-### 1. `1-langchainintro.ipynb` – Agent Foundations & High-Level Architecture
-
-#### 🧠 Theory & Core Principles
 An **AI Agent** utilizes a Large Language Model (LLM) as a dynamic reasoning engine to process inputs, select external tools, extract parameters, execute operations, and synthesize answers.
 
-- **Legacy (`AgentExecutor`) vs. LangChain v1.1 (`create_agent`)**:
-  - *Legacy (`AgentExecutor`)*: Imperial Python loop architecture requiring manual memory array passing and hardcoded execution limits.
-  - *LangChain v1.1 (`create_agent`)*: Constructs a stateful, compiled execution graph powered by **LangGraph** under the hood. It natively supports cyclic agent reasoning loops, state checkpointers, automatic message tracking, and tool failure recovery.
+> [!IMPORTANT]
+> **Architectural Upgrade in LangChain v1.1**:
+> - **Legacy (`AgentExecutor`)**: Imperative Python loops requiring manual memory array manipulation and hardcoded iteration limits.
+> - **LangChain v1.1 (`create_agent`)**: Constructs a compiled, stateful graph powered by **LangGraph** under the hood. Natively manages cyclic agent loops, thread checkpointers, message trajectories, and tool error recovery.
 
-#### 💻 Code Implementation & Input Patterns
+---
+
+### Code Walkthrough & Dual Invocation Patterns
 
 ```python
 import os
@@ -78,7 +119,7 @@ agent = create_agent(
 response_dict = agent.invoke({
     "messages": [{"role": "user", "content": "What is the weather like in New York?"}]
 })
-print("Messages in Graph:", response_dict["messages"])
+print("Agent Messages Chain:", response_dict["messages"])
 
 # Pattern B: Invoke with Simple Input String
 response_str = agent.invoke({
@@ -86,28 +127,38 @@ response_str = agent.invoke({
 })
 ```
 
-#### 🔍 Output Execution Graph Structure
-The returned dictionary contains `"messages"` representing the complete execution trajectory:
+---
+
+### Execution Trajectory State Structure
+
+Calling `agent.invoke()` returns a dictionary containing a `"messages"` list representing the complete execution graph trajectory:
+
 1. `HumanMessage`: `"What is the weather like in New York?"`
-2. `AIMessage`: `content=""`, `tool_calls=[{"name": "get_weather", "args": {"city": "New York"}, "id": "call_123"}]`
-3. `ToolMessage`: `content="The weather in New York is sunny."`, `tool_call_id="call_123"`
+2. `AIMessage`: `content=""`, `tool_calls=[{"name": "get_weather", "args": {"city": "New York"}, "id": "call_abc123"}]`
+3. `ToolMessage`: `content="The weather in New York is sunny."`, `tool_call_id="call_abc123"`
 4. `AIMessage`: `content="The weather in New York is currently sunny."`
 
 ---
 
-### 2. `2-modelintegration.ipynb` – Universal Model Provider Loading, Streaming & Batching
+## 3. Module 2: `2-modelintegration.ipynb` – Universal Model Initializer, Streaming & Batching
 
-#### 🧠 Theory & Core Principles
-LangChain v1.1 decouples LLM vendor bindings from application code through a universal factory initializer and standardized invocation contracts.
+### Universal Factory Initializer (`init_chat_model`)
 
-1. **Universal Model Initializer (`init_chat_model`)**:
-   Instead of vendor-locked imports (`ChatOpenAI`, `ChatGroq`, `ChatGoogleGenerativeAI`), `init_chat_model()` instantiates any chat LLM using string specifiers (`"gpt-4.1"`, `"google_genai:gemini-2.5-flash"`, `"groq:qwen/qwen3-32b"`).
-2. **Streaming Output (`model.stream()`)**:
-   LLMs generate text token by token. `model.stream()` uses HTTP chunked transfer encoding to yield `AIMessageChunk` objects in real time, eliminating user latency waiting time (**TTFT**).
-3. **Batch Execution (`model.batch()`) & Concurrency Control (`max_concurrency`)**:
-   `model.batch()` dispatches multiple independent queries in parallel using async/thread worker pools. Passing `config={'max_concurrency': N}` limits active parallel HTTP connections to prevent API rate limit failures.
+LangChain v1.1 decouples application logic from specific LLM vendors through a unified factory initializer `init_chat_model()`.
 
-#### 💻 Code Implementation
+Instead of vendor-locked class imports (`ChatOpenAI`, `ChatGroq`, `ChatGoogleGenerativeAI`), `init_chat_model()` instantiates any chat LLM via string specifiers (`"gpt-4.1"`, `"google_genai:gemini-2.5-flash"`, `"groq:qwen/qwen3-32b"`).
+
+---
+
+### Real-Time Streaming Output (`model.stream()`)
+
+LLMs generate text token by token. `model.stream()` uses HTTP chunked transfer encoding to yield `AIMessageChunk` objects in real time, dramatically reducing **Time-To-First-Token (TTFT)** for interactive applications.
+
+---
+
+### Parallel Batch Processing & Concurrency Control (`model.batch()`)
+
+`model.batch()` dispatches multiple independent queries in parallel using async/thread worker pools. Utilizing `config={'max_concurrency': N}` caps active parallel HTTP connections to prevent API rate limit failures.
 
 ```python
 import os
@@ -122,33 +173,22 @@ os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 os.environ["GOOGLE_API_KEY"] = os.getenv("GOOGLE_API_KEY")
 os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY")
 
-# ==========================================
 # 1. Universal vs. Direct Provider Loading
-# ==========================================
-
-# OpenAI (Universal vs. Direct)
 model_openai = init_chat_model("gpt-4.1")
 model_openai_direct = ChatOpenAI(model="gpt-4.1")
 
-# Google Gemini (Universal vs. Direct)
 model_gemini = init_chat_model("google_genai:gemini-2.5-flash")
 model_gemini_direct = ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite")
 
-# GROQ (Universal vs. Direct)
 model_groq = init_chat_model("groq:qwen/qwen3-32b")
 model_groq_direct = ChatGroq(model="qwen/qwen3-32b")
 
-# ==========================================
-# 2. Streaming Real-Time Output Chunking
-# ==========================================
+# 2. Streaming Output
 print("--- Streaming Output ---")
 for chunk in model_groq.stream("Write me a 200 words paragraph on Artificial Intelligence"):
-    # Accessing .text or .content property on AIMessageChunk
     print(chunk.text, end="|", flush=True)
 
-# ==========================================
-# 3. Batching with max_concurrency Cap
-# ==========================================
+# 3. Batching with Concurrency Control
 print("\n--- Parallel Batch Execution ---")
 questions = [
     "Why do parrots have colorful feathers?",
@@ -156,29 +196,30 @@ questions = [
     "What is quantum computing?"
 ]
 
-# Batch execution with concurrency control
-responses = model_groq.batch(
+batch_responses = model_groq.batch(
     questions,
-    config={"max_concurrency": 5}  # Limits parallel calls to 5
+    config={"max_concurrency": 5}  # Cap parallel requests to 5
 )
 
-for resp in responses:
+for resp in batch_responses:
     print("Response Length:", len(resp.content))
 ```
 
 ---
 
-### 3. `3-tools.ipynb` – Tool Anatomy, Schemas & Both Tool Binding Methods
-<img width="1024" height="559" alt="image" src="https://github.com/user-attachments/assets/82017e3a-16fe-48eb-8943-f38efc611922" />
+## 4. Module 3: `3-tools.ipynb` – Tool Anatomy, Schemas & Both Tool Binding Methods
 
-#### 🧠 Theory & Core Principles
+### Anatomy of a Tool & `@tool` Decorator
+
 A **Tool** is a pairing of:
-1. **JSON Schema**: Function name, docstring description, and argument definitions.
+1. **JSON Schema**: Function name, docstring description, and argument parameter definitions.
 2. **Execution Logic**: The underlying Python function or coroutine executed when triggered.
 
 The `@tool` decorator inspects function signatures (`location: str`) and docstrings (`"""Get the weather at a location"""`) to automatically generate OpenAI-compatible JSON schemas.
 
-#### 🛠️ Comparison: Method 1 vs. Method 2 Tool Execution
+---
+
+### Feature Comparison: Method 1 vs. Method 2
 
 | Feature | Method 1: `model.bind_tools()` | Method 2: `create_agent(tools=[...])` |
 | :--- | :--- | :--- |
@@ -187,24 +228,21 @@ The `@tool` decorator inspects function signatures (`location: str`) and docstri
 | **Control Level** | Fine-grained (Human verification, custom UI handlers) | High-level (Autonomous multi-step agent execution) |
 | **Tool Execution** | Explicit `tool_func.invoke(tool_call)` call | Framework handles tool invocation internally |
 
-#### 💻 Code Implementation
+---
+
+### Method 1: Direct Model Binding & 3-Step Manual Loop
 
 ```python
 from langchain.chat_models import init_chat_model
 from langchain.tools import tool
 from langchain.messages import ToolMessage
 
-# Define Tool via @tool Decorator
 @tool
 def get_weather(location: str) -> str:
     """Get the weather at a location"""
     return f"It's sunny in {location}"
 
 model = init_chat_model("groq:qwen/qwen3-32b")
-
-# =========================================================
-# Method 1: Direct Model Binding & 3-Step Manual Loop
-# =========================================================
 model_with_tools = model.bind_tools([get_weather])
 
 # Step 1: Model generates tool calls
@@ -212,15 +250,9 @@ messages = [{"role": "user", "content": "What's the weather in Boston?"}]
 ai_msg = model_with_tools.invoke(messages)
 messages.append(ai_msg)
 
-# Inspect model generated tool_calls structure
-for tool_call in ai_msg.tool_calls:
-    print(f"Tool Name: {tool_call['name']}")
-    print(f"Tool Args: {tool_call['args']}")
-    print(f"Tool ID:   {tool_call['id']}")
-
 # Step 2: Execute tool functions manually and collect results
 for tool_call in ai_msg.tool_calls:
-    tool_result = get_weather.invoke(tool_call)  # Returns result string or ToolMessage
+    tool_result = get_weather.invoke(tool_call)
     if not isinstance(tool_result, ToolMessage):
         tool_result = ToolMessage(content=str(tool_result), tool_call_id=tool_call["id"])
     messages.append(tool_result)
@@ -229,10 +261,13 @@ for tool_call in ai_msg.tool_calls:
 final_response = model_with_tools.invoke(messages)
 print("Final Response Text:", final_response.text)
 # "The current weather in Boston is 72F and sunny."
+```
 
-# =========================================================
-# Method 2: Automatic Agent Execution Loop
-# =========================================================
+---
+
+### Method 2: Automatic Agent Graph Execution Loop
+
+```python
 from langchain.agents import create_agent
 
 agent = create_agent(
@@ -247,25 +282,27 @@ print("Automated Agent Result:", agent_res["messages"][-1].content)
 
 ---
 
-### 4. `4-messages.ipynb` – Canonical Message State, Prompts & Token Usage Metadata
+## 5. Module 4: `4-messages.ipynb` – Canonical Message State & Token Usage Metadata
 
-#### 🧠 Theory & Core Principles
-Messages carry content, role types, and provider metadata across conversational turns.
+### Text Prompts vs. Message Prompts
 
-- **Text Prompts vs. Message Prompts**:
-  - *Text Prompts*: Standalone strings for simple, single-turn requests with zero history retention.
-  - *Message Prompts*: Structured arrays of `BaseMessage` objects required for multi-turn history and agent loops.
+- **Text Prompts**: Standalone strings for simple, single-turn requests with zero history retention.
+- **Message Prompts**: Structured arrays of `BaseMessage` objects required for multi-turn chat memory and agent loops.
 
-#### 💬 The 4 Canonical Message Types
+---
 
-| Message Class | Role | Purpose & Contents |
+### The 4 Canonical Message Types
+
+| Message Class | Role | Purpose & Key Attributes |
 | :--- | :--- | :--- |
 | **`SystemMessage`** | `system` | Sets persona, instructions, system rules, and safety guardrails. |
 | **`HumanMessage`** | `user` | User inputs (supports text & multimodal content). |
 | **`AIMessage`** | `assistant` | Model generated response containing text content, `tool_calls` payload, and metadata. |
 | **`ToolMessage`** | `tool` | Output returned by a tool call execution. **Must include `tool_call_id` matching `tool_call['id']`**. |
 
-#### 💻 Code Implementation
+---
+
+### Message Trajectory & Token Usage Metadata
 
 ```python
 from langchain.chat_models import init_chat_model
@@ -319,28 +356,34 @@ print("Final Grounded Response:", final_tool_res.content)
 
 ---
 
-### 5. `5-structuredoutput.ipynb` – Enforced Schema Parsing, `include_raw`, Nested Schemas, `model.profile` & Agent `response_format`
+## 6. Module 5: `5-structuredoutput.ipynb` – Schema Enforcement & Output Parsing
 
-#### 💡 Deep Dive: TypedDict vs. Pydantic, Runtime Validation & LLM Retry Mechanics
+### Deep Dive: TypedDict vs. Pydantic, Runtime Validation & LLM Retry Mechanics
 
-##### 1. Why Use `TypedDict` When We Have `Pydantic`?
+#### 1. Why Use `TypedDict` When We Have `Pydantic`?
+
 While `Pydantic` is feature-packed with runtime data validation, `TypedDict` serves distinct, complementary engineering purposes:
+
 - **No Runtime Overhead**: `TypedDict` does not validate data types when instantiated during program execution. It incurs zero CPU overhead, making it ideal when parsing performance is critical and input sources are already trusted.
 - **Lightweight Standard Library Dependency**: `TypedDict` is built into standard Python (`typing`/`typing_extensions`), avoiding extra external dependencies or package footprint.
 - **Static Analysis & IDE Introspectability**: Provides type hints for static checkers like `mypy` and IDE autocompletion without raising execution errors if minor payload mismatches occur.
 - **Choice Rule**: Use **`Pydantic`** when ingesting untrusted data (user input, external API webhooks, LLM outputs) where strict validation is mandatory. Use **`TypedDict`** for simple internal state definitions or lightweight dictionary interfaces.
 
-##### 2. What is Runtime Validation?
+#### 2. What is Runtime Validation?
+
 **Runtime Validation** is the process of inspecting and validating data types and constraints *at the exact moment code executes*, rather than relying on pre-execution static checks.
+
 - **`TypedDict` Behavior**: Does **not** perform runtime validation. Constructing `MovieDict(year="2024")` (passing a string where an `int` was defined) executes silently without throwing a `TypeError`.
 - **`Pydantic` Behavior**: Performs **strict runtime validation**. Instantiating `Movie(year="invalid_str")` immediately halts execution and raises a `pydantic.ValidationError` containing detailed line-by-line error reports.
 
-##### 3. Does Pydantic Automatically Retry on Validation Error with LLMs?
-**No.** When Pydantic raises a `ValidationError`, the LLM does **NOT** automatically retry by default. The exception is raised directly in your application thread.
+#### 3. Does Pydantic Automatically Retry on Validation Error with LLMs?
+
+> [!WARNING]
+> **No.** When Pydantic raises a `ValidationError`, the LLM does **NOT** automatically retry by default. The exception is raised directly in your application thread.
 
 **Developer Responsibilities & LLM Retry Patterns**:
-1. **Manual Exception Handling**: You can wrap `model.invoke()` in a `try...except ValidationError as e:` block.
-2. **Automated Error Feedback & Re-Prompting**: To achieve automatic retries, you catch the `ValidationError`, extract `e.json()`, and feed the error string back into the model prompt so the LLM self-corrects:
+1. **Manual Exception Handling**: Wrap `model.invoke()` in a `try...except ValidationError as e:` block.
+2. **Automated Error Feedback & Re-Prompting**: Catch `ValidationError`, extract `e.json()`, and feed the error string back into the prompt so the LLM self-corrects:
    ```python
    from pydantic import ValidationError
    from langchain_core.messages import HumanMessage, AIMessage
@@ -358,19 +401,19 @@ While `Pydantic` is feature-packed with runtime data validation, `TypedDict` ser
    ```
 3. **LangChain Retry Utilities**: LangChain provides built-in parsers like `OutputFixingParser` and `RetryWithErrorOutputParser` that automate this error feedback retry loop.
 
-#### 📐 Supported Schema Enforcers & Special Parameters
+---
 
-1. **Pydantic (`BaseModel`)**: Full runtime validation, default values, nested models, and field descriptions (`Field(description=...)`).
-2. **`include_raw=True` Parameter (CRITICAL KEY FEATURE)**:
-   - Calling `with_structured_output(Movie, include_raw=True)` returns a dictionary with 3 top-level keys:
-     - `'raw'`: The full raw `AIMessage` returned by the LLM (useful for inspecting token usage or raw text).
-     - `'parsed'`: The instantiated & validated schema object.
-     - `'parsing_error'`: `None` if successful, or the parsing exception if validation failed.
-3. **Nested Pydantic & TypedDict Schemas**: Sub-models (`Actor`) nested inside parent schemas (`MovieDetails`) via `list[Actor]` or optional fields (`float | None = Field(...)`).
-4. **`model.profile` Attribute**: Returns model provider capability profiling info.
-5. **Agent Integration (`response_format`)**: Passing a schema class to `create_agent(response_format=Schema)` auto-selects native provider strategies and places the validated object inside `result["structured_response"]`.
+### Schema Enforcers & `include_raw=True` Parameter
 
-#### 💻 Code Implementation
+> [!TIP]
+> Setting `include_raw=True` on `model.with_structured_output(Movie, include_raw=True)` returns a 3-key dictionary payload:
+> - `'raw'`: Full, unparsed `AIMessage` returned by the LLM (useful for tracking token consumption or raw text).
+> - `'parsed'`: Instantiated & validated schema object (`Movie(...)`).
+> - `'parsing_error'`: `None` if successful, or the parsing exception if output parsing failed.
+
+---
+
+### Nested Pydantic & Nested TypedDict Structures
 
 ```python
 from pydantic import BaseModel, Field
@@ -384,9 +427,7 @@ model = init_chat_model("groq:qwen/qwen3-32b")
 # Inspect Model Profile
 print("Model Profile Attributes:", getattr(model, "profile", "N/A"))
 
-# =========================================================
 # 1. Pydantic Schema with include_raw=True
-# =========================================================
 class Movie(BaseModel):
     """A movie with details."""
     title: str = Field(description="The title of the movie")
@@ -394,7 +435,6 @@ class Movie(BaseModel):
     director: str = Field(description="The director of the movie")
     rating: float = Field(description="The movie's rating out of 10")
 
-# Enabling include_raw=True returns {'raw': AIMessage, 'parsed': Movie, 'parsing_error': None}
 model_with_raw = model.with_structured_output(Movie, include_raw=True)
 response_raw = model_with_raw.invoke("Provide details about the movie Inception")
 
@@ -402,9 +442,7 @@ print("Raw AIMessage:", response_raw["raw"])
 print("Parsed Movie Object:", response_raw["parsed"])
 print("Parsing Error:", response_raw["parsing_error"])
 
-# =========================================================
 # 2. Nested Pydantic & Nested TypedDict Schemas
-# =========================================================
 
 # --- A. Nested Pydantic Models ---
 class ActorPydantic(BaseModel):
@@ -437,10 +475,13 @@ class MovieDetailsTypedDict(TypedDict):
 model_nested_td = model.with_structured_output(MovieDetailsTypedDict)
 res_td = model_nested_td.invoke("Provide details about the movie Avengers")
 print("Lead Actor TypedDict:", res_td["cast"][0]["name"])
+```
 
-# =========================================================
-# 3. TypedDict with Annotated Metadata
-# =========================================================
+---
+
+### TypedDict with `Annotated` Metadata
+
+```python
 class MovieDict(TypedDict):
     """A movie with details."""
     title: Annotated[str, Field(description="The title of the movie")]
@@ -450,14 +491,17 @@ class MovieDict(TypedDict):
 
 model_typeddict = model.with_structured_output(MovieDict)
 dict_response = model_typeddict.invoke("Provide details about Avengers")
+```
 
-# =========================================================
-# 4. Agent Integration via response_format
-# =========================================================
+---
 
+### Agent Integration via `response_format`
+
+Passing a Pydantic, TypedDict, or DataClass to `create_agent(response_format=Schema)` auto-binds provider strategies and places the validated object inside `result["structured_response"]`.
+
+```python
 # Option A: Pydantic Schema
 class ContactInfoPydantic(BaseModel):
-    """Contact information for a person."""
     name: str = Field(description="The name of the person")
     email: str = Field(description="The email address of the person")
     phone: str = Field(description="The phone number of the person")
@@ -468,7 +512,6 @@ print("Structured Response Pydantic:", res_agent_pyd["structured_response"])
 
 # Option B: TypedDict Schema
 class ContactInfoTypedDict(TypedDict):
-    """Contact information for a person."""
     name: str
     email: str
     phone: str
@@ -480,7 +523,6 @@ print("Structured Response TypedDict:", res_agent_td["structured_response"])
 # Option C: DataClass Schema
 @dataclass
 class ContactInfoDataClass:
-    """Contact information for a person."""
     name: str
     email: str
     phone: str
@@ -492,39 +534,43 @@ print("Structured Response DataClass:", res_agent_dc["structured_response"])
 
 ---
 
-### 6. `6-middleware.ipynb` – Stateful Middleware, Token Optimization & Human-in-the-Loop Operations
+## 7. Module 6: `6-middleware.ipynb` – Agent Middleware, Summarization & Human-in-the-Loop
 
-#### 🧠 Theory & Core Principles
-**Middleware** intercept, modify, or pause internal agent execution steps. Useful for:
+### Middleware Architecture Overview
+
+**Middleware** intercept, modify, or pause internal agent execution steps. Essential for:
 - Logging, analytics, and token expenditure monitoring.
 - Guardrails, PII masking, and output safety policies.
 - Automated conversation history compression.
 - Human approval checkpoints before executing sensitive tools.
 
-#### 1. Summarization Middleware (`SummarizationMiddleware`)
-- **Problem**: Multi-turn agent chats accumulate token history, eventually exceeding model context windows.
-- **Solution**: Triggers a background summarization pass that compresses older turns into a single summary `SystemMessage` block.
-- **Trigger Strategies**:
-  1. `trigger=("messages", 10)`, `keep=("messages", 4)`: Triggers when conversation reaches 10 messages; keeps the 4 most recent messages intact.
-  2. `trigger=("fraction", 0.005)`, `keep=("fraction", 0.002)`: Triggers when message tokens reach 0.5% of total model context (e.g. ~640 tokens for 128k context), compressing down to 0.2% (~256 tokens).
-- **Token Counter Heuristic**: `count_tokens(messages) = sum(len(str(m.content)) for m in messages) // 4` (4 chars ≈ 1 token).
+---
 
-#### 2. Human-In-The-Loop Middleware (`HumanInTheLoopMiddleware`)
-- **Problem**: Operations like sending emails, financial transfers, or database writes require human oversight before executing.
-- **Solution**: Pauses agent execution before triggering targeted tools. Saves graph state via a checkpointer (`InMemorySaver`), waiting for a human resume signal via `Command(resume=...)`.
-- **`interrupt_on` Configuration**:
-  ```python
-  interrupt_on={
-      "send_email_tool": {"allowed_decisions": ["approve", "edit", "reject"]},
-      "read_email_tool": False  # Disable interrupt for read-only operations
-  }
-  ```
-- **Allowed Human Decisions**:
-  - `"approve"`: Proceeds with tool execution unchanged.
-  - `"reject"`: Cancels tool execution and returns cancellation message to the model.
-  - `"edit"`: Overrides tool arguments before execution (`edited_action={"name": "send_email_tool", "args": {...}}`).
+### Summarization Middleware (`trigger=("messages"|"fraction")`)
 
-#### 💻 Code Implementation
+> [!NOTE]
+> Summarization Middleware automatically compresses older conversation turns into a summarized context block once a message count or token threshold is reached, while keeping recent context intact.
+
+- **Message Trigger**: `trigger=("messages", 10)`, `keep=("messages", 4)` (Triggers at 10 messages, keeping the 4 most recent).
+- **Fraction Trigger**: `trigger=("fraction", 0.005)`, `keep=("fraction", 0.002)` (Triggers at 0.5% of model context window, keeping 0.2%).
+- **Token Counter Heuristic**: `count_tokens(messages) = sum(len(str(m.content)) for m in messages) // 4`.
+
+---
+
+### Human-in-the-Loop Middleware (`HumanInTheLoopMiddleware`)
+
+Pauses agent execution before triggering targeted tools. Saves graph state via a checkpointer (`InMemorySaver`), waiting for a human resume signal via `Command(resume=...)`.
+
+```python
+interrupt_on={
+    "send_email_tool": {"allowed_decisions": ["approve", "edit", "reject"]},
+    "read_email_tool": False  # Disable interrupt for read-only operations
+}
+```
+
+---
+
+### The 3 Human Resumption Decisions (`approve`, `reject`, `edit`)
 
 ```python
 import os
@@ -538,15 +584,7 @@ from langchain.tools import tool
 
 load_dotenv()
 
-# Token Counter Helper
-def count_tokens(messages):
-    return sum(len(str(m.content)) for m in messages) // 4  # 4 chars approx 1 token
-
-# =========================================================
-# 1. Summarization Middleware (Message & Fraction Triggers)
-# =========================================================
-
-# Message-Count Trigger Agent
+# 1. Summarization Middleware Setup
 agent_sum_msg = create_agent(
     model="gpt-4o-mini",
     checkpointer=InMemorySaver(),
@@ -559,30 +597,9 @@ agent_sum_msg = create_agent(
     ]
 )
 
-# Token Fraction Trigger Agent
-agent_sum_frac = create_agent(
-    model="gpt-4o-mini",
-    checkpointer=InMemorySaver(),
-    middleware=[
-        SummarizationMiddleware(
-            model="gpt-4o-mini",
-            trigger=("fraction", 0.005),  # 0.5% of 128k context (~640 tokens)
-            keep=("fraction", 0.002)      # 0.2% of 128k context (~256 tokens)
-        )
-    ]
-)
-
 thread_config = {"configurable": {"thread_id": "test-session-1"}}
 
-# Run multiple turns to trigger summarization
-questions = ["What is 2+2?", "What is 10*5?", "What is 100/4?", "What is 15-7?", "What is 3*3?", "What is 4*4?"]
-for q in questions:
-    res = agent_sum_msg.invoke({"messages": [HumanMessage(content=q)]}, config=thread_config)
-
-# =========================================================
-# 2. Human-in-the-Loop Middleware (Approve, Reject, Edit)
-# =========================================================
-
+# 2. Human-in-the-Loop Middleware Setup
 @tool
 def read_email_tool(email_id: str) -> str:
     """Mock function to read an email by its ID."""
@@ -603,15 +620,13 @@ agent_hitl = create_agent(
                 "send_email_tool": {
                     "allowed_decisions": ["approve", "edit", "reject"]
                 },
-                "read_email_tool": False  # Read ops do not require approval
+                "read_email_tool": False
             }
         )
     ]
 )
 
-# ---------------------------------------------------------
 # Decision 1: APPROVE
-# ---------------------------------------------------------
 config_approve = {"configurable": {"thread_id": "test-approve"}}
 res_app = agent_hitl.invoke(
     {"messages": [HumanMessage(content="Send email to john@test.com with subject 'Hello' and body 'How are you?'")]},
@@ -626,9 +641,7 @@ if "__interrupt__" in res_app:
     )
     print("Approve Final Result:", res_app["messages"][-1].content)
 
-# ---------------------------------------------------------
 # Decision 2: REJECT
-# ---------------------------------------------------------
 config_reject = {"configurable": {"thread_id": "test-reject"}}
 res_rej = agent_hitl.invoke(
     {"messages": [HumanMessage(content="Send email to john@test.com with subject 'Hello' and body 'How are you?'")]},
@@ -643,9 +656,7 @@ if "__interrupt__" in res_rej:
     )
     print("Reject Final Result:", res_rej["messages"][-1].content)
 
-# ---------------------------------------------------------
 # Decision 3: EDIT
-# ---------------------------------------------------------
 config_edit = {"configurable": {"thread_id": "test-edit"}}
 res_edit = agent_hitl.invoke(
     {"messages": [HumanMessage(content="Send email to wrong@email.com with subject 'Test' and body 'Hello'")]},
@@ -679,7 +690,7 @@ if "__interrupt__" in res_edit:
 
 ---
 
-## 🎨 Appendix: Why the CLIP Model & Processor are Essential in Multimodal RAG
+## 8. Appendix: Why CLIP Model & Processor are Essential in Multimodal RAG
 
 In a Multimodal Retrieval-Augmented Generation (RAG) system (such as processing complex enterprise documents containing both text passages and visual charts/diagrams), the **CLIP Model** (`CLIPModel`) and **CLIP Processor** (`CLIPProcessor`) are foundational components for the following core reasons:
 
@@ -696,4 +707,3 @@ The `CLIPProcessor` prepares raw input data before feeding it into the CLIP mode
 
 ### 4. Cross-Modal Contextual Alignment
 CLIP is contrastively pre-trained on hundreds of millions of image-caption pairs. It possesses deep semantic understanding of the relationship between textual concepts and visual elements, enabling rich cross-modal retrieval for Vision LLMs (`GPT-4o`).
-
