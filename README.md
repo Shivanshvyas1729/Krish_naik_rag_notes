@@ -159,6 +159,13 @@ result = agent.invoke({"messages": [{"role": "user", "content": "What's the weat
 
 ### 4. `4-messages.ipynb` – Canonical Message State & Token Usage Metadata
 
+"Canonical Message State" refers to a unified, standardized format used in software integration to ensure different systems can communicate seamlessly
+
+- Reduces Complexity
+- Looser Coupling
+- Easier Maintenance
+
+
 #### 🧠 Theory & Core Concepts
 Messages are the fundamental unit of context in LangChain. They represent multi-turn conversation state and carry content, roles, and provider metadata across APIs.
 
