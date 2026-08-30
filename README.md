@@ -238,6 +238,11 @@ structured_dict_model = model.with_structured_output(MovieDict)
 
 #### 🧠 Theory & Core Concepts
 **Middleware** intercept and modify internal agent execution steps.
+- Logging, analytics, and token cost control.
+- Guardrails , PII masking (Personally Identifiable Information), and output safety filtering.
+- Automated memory compression and human approval checkpoints.
+(Guardrails are safety boundaries or protective barriers that prevent systems, vehicles, or artificial intelligence models from veering off course into dangerous or unintended territory)
+
 
 - Think of agent middleware as a security guard, accountant, and editor standing right beside an AI agent.
 The AI agent does the thinking, but the middleware intercepts everything the agent says or does before it actually happens.
