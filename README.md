@@ -81,7 +81,7 @@ LangChain v1.1 decouples provider-specific code from application logic using a u
 
 3. **Batch Processing (`model.batch()`)**:
    - *Concept*: Dispatches multiple independent prompts in parallel using async thread pools.
-   - *Performance Benefit*: Drastically reduces total latency and increases request throughput compared to sequential `for` loops.
+   - *Performance Benefit*: Drastically reduces total latency and increases request throughput compared to sequential `for` loops.(It can handle multiple requests more efficiently and process more of them in the same amount of time than a normal sequential for loop.)
 
    ```python
    responses = model.batch(["What is 2+2?", "What is 10*5?", "What is 100/4?"])
