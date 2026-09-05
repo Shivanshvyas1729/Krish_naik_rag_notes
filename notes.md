@@ -5,6 +5,7 @@
 ## 📋 Table of Contents
 
 1. [Data Ingestion & Splitting](#1-data-ingestion--splitting-1-dataingestionipynb)
+   * [10 Core Chunking Strategies in RAG](#-10-core-chunking-strategies-in-rag)
 
 2. [PDF Parsing](#2-pdf-parsing-2-dataparsingpdfipynb)
 
@@ -122,6 +123,519 @@ bulk_documents = dir_loader.load()
 ### 💡 Advanced Best Practices & Key Insights:
 *   **Chunk Overlap Strategy**: Always set `chunk_overlap` between <mark style="background-color: #fff3cd; color: #856404; padding: 2px 4px; border-radius: 4px;">10% to 20% of `chunk_size`</mark>. This prevents losing critical semantic context across chunk boundary splits.
 *   **Metadata Enrichment**: Always inject custom metadata attributes (e.g., `source`, `creation_date`, `category`) onto each Document during ingestion for precise metadata filtering in vector databases.
+
+<br>
+
+### 🧩 10 Core Chunking Strategies in RAG
+
+> 💡 **For RAG, the most commonly useful starting points are:**
+> **Recursive + overlap**, **semantic**, and **document-structure-based chunking**.
+
+#### Summary Matrix:
+| # | Strategy | Core Mechanism | Best For | Trade-offs & Limitations |
+| :--- | :--- | :--- | :--- | :--- |
+| 1 | **Fixed-size chunking** | Split strictly every $N$ characters/tokens | Rapid baseline tests | Slices words & sentences mid-thought |
+| 2 | **Sentence-based chunking** | Split at sentence punctuation (`.`, `!`, `?`) | Factoid Q&A, statement search | Uneven chunk lengths; loses paragraph context |
+| 3 | **Paragraph-based chunking** | Split at double newlines (`\n\n`) | Articles, blogs, narratives | Paragraphs vary wildly in length |
+| 4 | **Recursive chunking** | Hierarchical separators (`\n\n` → `\n` → `" "` → `""`) | General prose (Default choice) | Complex technical documents can still fragment |
+| 5 | **Semantic chunking** | Split on sentence embedding distance spikes | Dense technical / academic text | High computation cost ($N$ embedding calls) |
+| 6 | **Document-structure chunking** | Split on headers (`#`, `##`), HTML tags, tables | Markdown docs, manuals, code | Irregular chunk sizes; requires structural markup |
+| 7 | **Sliding-window chunking** | Fixed window size + fixed stride overlap | High-continuity document streams | Substantial data redundancy in vector index |
+| 8 | **Token-based chunking** | Split strictly by tokenizer token limit | LLM context window budgeting | Disregards grammatical sentence boundaries |
+| 9 | **Agentic/LLM-based chunking** | Prompt LLM to extract cohesive sections | Unstructured messy data | High API latency and financial cost |
+| 10 | **Hybrid chunking** | Structure + Recursive/Semantic + Token limits | Enterprise-grade production RAG | Multi-step pipeline implementation overhead |
+
+---
+
+#### 1. Fixed-size chunking
+Splits text every $N$ characters (or words) with an optional overlap, without taking grammatical or linguistic structure into account.
+* **Best used for:** Quick baseline tests or uniform flat data where semantic boundaries are unimportant.
+* **Risk:** Cuts words and sentences in half, causing context fragmentation and hallucinations.
+
+<details>
+<summary><b>Code & Example: Fixed-size Chunking</b></summary>
+
+```python
+from langchain_text_splitters import CharacterTextSplitter
+
+text = (
+    "LangChain is an orchestration framework for LLMs. It connects models "
+    "to external data sources and enables retrieval-augmented generation. "
+    "Chroma and FAISS are common vector stores used for fast similarity search."
+)
+
+splitter = CharacterTextSplitter(
+    separator="",          # Hard character split
+    chunk_size=60,         # Exact character count
+    chunk_overlap=10       # Fixed overlap
+)
+
+chunks = splitter.split_text(text)
+for i, chunk in enumerate(chunks, 1):
+    print(f"Chunk {i} [{len(chunk)} chars]: '{chunk}'")
+```
+
+**Output Example:**
+```text
+Chunk 1 [60 chars]: 'LangChain is an orchestration framework for LLMs. It connect'
+Chunk 2 [60 chars]: 'connects models to external data sources and enables retriev'
+Chunk 3 [60 chars]: 'retrieval-augmented generation. Chroma and FAISS are common '
+Chunk 4 [48 chars]: 'common vector stores used for fast similarity search.'
+```
+</details>
+
+---
+
+#### 2. Sentence-based chunking
+Splits text directly along sentence boundaries (using punctuation marks like `.`, `!`, `?` or NLP tokenizers from NLTK/spaCy).
+* **Best used for:** Precise fact-checking, statement verification, and sentence-level quote retrieval.
+* **Risk:** Individual sentences frequently lack sufficient context (e.g., resolving pronouns like "it", "they", or "this").
+
+<details>
+<summary><b>Code & Example: Sentence-based Chunking</b></summary>
+
+```python
+import re
+
+text = (
+    "Retrieval-Augmented Generation enhances LLM capability! "
+    "It fetches relevant knowledge from external vector databases. "
+    "Does this prevent hallucinations? Yes, by grounding answers in retrieved source text."
+)
+
+# Sentence boundary regex or NLTK/spaCy sentence tokenizer
+sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', text) if s.strip()]
+
+for i, sent in enumerate(sentences, 1):
+    print(f"Chunk {i} (Sentence): {sent}")
+```
+
+**Output Example:**
+```text
+Chunk 1 (Sentence): Retrieval-Augmented Generation enhances LLM capability!
+Chunk 2 (Sentence): It fetches relevant knowledge from external vector databases.
+Chunk 3 (Sentence): Does this prevent hallucinations?
+Chunk 4 (Sentence): Yes, by grounding answers in retrieved source text.
+```
+</details>
+
+---
+
+#### 3. Paragraph-based chunking
+Uses natural paragraph delimiters (usually double newlines `\n\n`) to segment text, maintaining the author's original unit of thought.
+* **Best used for:** Well-formatted editorial content, blog posts, essays, and reports where paragraphs represent cohesive ideas.
+* **Risk:** Paragraph lengths vary wildly; one paragraph may be 20 tokens while another is 2,000 tokens, exceeding LLM context limits.
+
+<details>
+<summary><b>Code & Example: Paragraph-based Chunking</b></summary>
+
+```python
+from langchain_text_splitters import CharacterTextSplitter
+
+text = """Artificial Intelligence has revolutionized natural language processing. Modern transformer architectures allow models to understand contextual relationships across vast amounts of text.
+
+Retrieval-Augmented Generation (RAG) is a prominent architecture that combines information retrieval with text generation. By grounding responses in external knowledge, RAG dramatically reduces hallucinations.
+
+Vector databases act as the memory layer in RAG systems, enabling sub-second semantic retrieval across millions of embeddings."""
+
+splitter = CharacterTextSplitter(
+    separator="\n\n",
+    chunk_size=100,         # Minimum target before splitting
+    chunk_overlap=0
+)
+
+chunks = splitter.split_text(text)
+for i, chunk in enumerate(chunks, 1):
+    print(f"--- Chunk {i} (Paragraph) ---\n{chunk}\n")
+```
+
+**Output Example:**
+```text
+--- Chunk 1 (Paragraph) ---
+Artificial Intelligence has revolutionized natural language processing. Modern transformer architectures allow models to understand contextual relationships across vast amounts of text.
+
+--- Chunk 2 (Paragraph) ---
+Retrieval-Augmented Generation (RAG) is a prominent architecture that combines information retrieval with text generation. By grounding responses in external knowledge, RAG dramatically reduces hallucinations.
+
+--- Chunk 3 (Paragraph) ---
+Vector databases act as the memory layer in RAG systems, enabling sub-second semantic retrieval across millions of embeddings.
+```
+</details>
+
+---
+
+#### 4. Recursive chunking
+Tries a prioritized hierarchy of separators sequentially (`\n\n` → `\n` → `" "` → `""`). It only moves to finer separators if a chunk exceeds the target size, keeping larger structural units (paragraphs, then sentences) intact whenever possible.
+* **Best used for:** General prose, documentation, articles, and default RAG pipelines (recommended baseline).
+* **Risk:** Dense technical sections without standard paragraph breaks can still end up fragmented.
+
+<details>
+<summary><b>Code & Example: Recursive Chunking</b></summary>
+
+```python
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+text = """LangChain provides modular abstractions. It simplifies building LLM apps.
+
+RAG combines retrieval with generation:
+- Dense retrieval uses vector embeddings.
+- Sparse retrieval uses keyword algorithms like BM25.
+Combining both creates hybrid search."""
+
+splitter = RecursiveCharacterTextSplitter(
+    chunk_size=120,
+    chunk_overlap=20,
+    separators=["\n\n", "\n", " ", ""]
+)
+
+chunks = splitter.split_text(text)
+for i, chunk in enumerate(chunks, 1):
+    print(f"Chunk {i} ({len(chunk)} chars):\n\"{chunk}\"\n")
+```
+
+**Output Example:**
+```text
+Chunk 1 (74 chars):
+"LangChain provides modular abstractions. It simplifies building LLM apps."
+
+Chunk 2 (112 chars):
+"RAG combines retrieval with generation:
+- Dense retrieval uses vector embeddings.
+- Sparse retrieval uses keyword"
+
+Chunk 3 (85 chars):
+"- Sparse retrieval uses keyword algorithms like BM25.
+Combining both creates hybrid search."
+```
+</details>
+
+---
+
+#### 5. Semantic chunking
+Computes embeddings for consecutive sentences and measures their cosine distance. When the semantic distance between adjacent sentences spikes past a calculated statistical threshold (percentile or standard deviation), it places a chunk boundary.
+* **Best used for:** Dense multi-topic documents, research papers, and technical transcripts where topics shift unpredictably.
+* **Risk:** Computationally expensive at ingestion time ($N$ sentence embedding inference calls).
+
+<details>
+<summary><b>Code & Example: Semantic Chunking</b></summary>
+
+```python
+from langchain_experimental.text_splitter import SemanticChunker
+from langchain_openai import OpenAIEmbeddings
+
+text = """LangChain is a framework for building applications with LLMs.
+It provides modular abstractions to combine LLMs with vector databases like Chroma and Pinecone.
+You can create chains, agents, memory, and retrievers.
+The Eiffel Tower is located on the Champ de Mars in Paris, France.
+France is one of the most visited tourist destinations in the world."""
+
+# Splits when cosine distance between consecutive sentences exceeds 95th percentile
+chunker = SemanticChunker(
+    embeddings=OpenAIEmbeddings(),
+    breakpoint_threshold_type="percentile",
+    breakpoint_threshold_amount=95.0
+)
+
+docs = chunker.create_documents([text])
+for i, doc in enumerate(docs, 1):
+    print(f"=== Semantic Chunk {i} ===\n{doc.page_content}\n")
+```
+
+**Output Example:**
+```text
+=== Semantic Chunk 1 ===
+LangChain is a framework for building applications with LLMs. It provides modular abstractions to combine LLMs with vector databases like Chroma and Pinecone. You can create chains, agents, memory, and retrievers.
+
+=== Semantic Chunk 2 ===
+The Eiffel Tower is located on the Champ de Mars in Paris, France. France is one of the most visited tourist destinations in the world.
+```
+</details>
+
+---
+
+#### 6. Document-structure chunking
+Leverages the inherent layout and syntax of documents — such as Markdown headers (`#`, `##`, `###`), HTML tags (`<section>`, `<table>`), code ASTs (classes, functions), or JSON keys. It attaches structural breadcrumbs directly into chunk metadata.
+* **Best used for:** Technical documentation, API specs, developer docs, GitHub repositories, and structured reports.
+* **Risk:** Chunk size is determined entirely by author formatting; long sections without subheaders may still need secondary splitting.
+
+<details>
+<summary><b>Code & Example: Document-structure Chunking</b></summary>
+
+```python
+from langchain_text_splitters import MarkdownHeaderTextSplitter
+
+markdown_text = """# Machine Learning
+Machine learning algorithms build mathematical models based on sample training data.
+
+## Supervised Learning
+Supervised algorithms require input data paired with corresponding ground-truth labels.
+
+### Classification
+Predicts discrete category labels like spam detection.
+
+## Unsupervised Learning
+Discovers inherent groupings or patterns in unlabeled data."""
+
+headers_to_split_on = [
+    ("#", "Header 1"),
+    ("##", "Header 2"),
+    ("###", "Header 3"),
+]
+
+markdown_splitter = MarkdownHeaderTextSplitter(
+    headers_to_split_on=headers_to_split_on,
+    strip_headers=False
+)
+
+splits = markdown_splitter.split_text(markdown_text)
+for i, doc in enumerate(splits, 1):
+    print(f"Chunk {i} | Metadata: {doc.metadata}")
+    print(f"Content:\n{doc.page_content}\n")
+```
+
+**Output Example:**
+```text
+Chunk 1 | Metadata: {'Header 1': 'Machine Learning'}
+Content:
+# Machine Learning
+Machine learning algorithms build mathematical models based on sample training data.
+
+Chunk 2 | Metadata: {'Header 1': 'Machine Learning', 'Header 2': 'Supervised Learning'}
+Content:
+## Supervised Learning
+Supervised algorithms require input data paired with corresponding ground-truth labels.
+
+Chunk 3 | Metadata: {'Header 1': 'Machine Learning', 'Header 2': 'Supervised Learning', 'Header 3': 'Classification'}
+Content:
+### Classification
+Predicts discrete category labels like spam detection.
+
+Chunk 4 | Metadata: {'Header 1': 'Machine Learning', 'Header 2': 'Unsupervised Learning'}
+Content:
+## Unsupervised Learning
+Discovers inherent groupings or patterns in unlabeled data.
+```
+</details>
+
+---
+
+#### 7. Sliding-window chunking
+Generates overlapping chunks by sliding a fixed-size window forward by a smaller step (stride). A window of size $W$ with stride $S$ produces an overlap of $W - S$ tokens across consecutive chunks, ensuring transitions between boundaries are never lost.
+* **Best used for:** Continuous text streams, conversation transcripts, medical records, or legal contracts where context shearing is unacceptable.
+* **Risk:** High storage and vector compute overhead due to repetitive text redundancy.
+
+<details>
+<summary><b>Code & Example: Sliding-window Chunking</b></summary>
+
+```python
+def sliding_window_chunking(text: str, window_size: int = 50, stride: int = 30):
+    words = text.split()
+    chunks = []
+    for i in range(0, len(words), stride):
+        chunk_words = words[i : i + window_size]
+        if chunk_words:
+            chunks.append(" ".join(chunk_words))
+        if i + window_size >= len(words):
+            break
+    return chunks
+
+sample = (
+    "Alpha Beta Gamma Delta Epsilon Zeta Eta Theta Iota Kappa Lambda Mu "
+    "Nu Xi Omicron Pi Rho Sigma Tau Upsilon Phi Chi Psi Omega"
+)
+
+chunks = sliding_window_chunking(sample, window_size=10, stride=6)  # 4 words overlap
+for i, chunk in enumerate(chunks, 1):
+    print(f"Window {i}: {chunk}")
+```
+
+**Output Example:**
+```text
+Window 1: Alpha Beta Gamma Delta Epsilon Zeta Eta Theta Iota Kappa
+Window 2: Eta Theta Iota Kappa Lambda Mu Nu Xi Omicron Pi
+Window 3: Nu Xi Omicron Pi Rho Sigma Tau Upsilon Phi Chi
+Window 4: Tau Upsilon Phi Chi Psi Omega
+```
+</details>
+
+---
+
+#### 8. Token-based chunking
+Splits text according to explicit token counts using the target LLM's exact BPE tokenizer (e.g., `tiktoken` for OpenAI `cl100k_base` / `o200k_base`).
+* **Best used for:** Strict LLM context window budgeting, preventing API token limit errors, and accurate cost tracking.
+* **Risk:** May split in the middle of words or sentences if not combined with recursive fallback characters.
+
+<details>
+<summary><b>Code & Example: Token-based Chunking</b></summary>
+
+```python
+from langchain_text_splitters import TokenTextSplitter
+
+text = (
+    "TokenTextSplitter splits documents strictly based on the token count "
+    "generated by BPE tokenizers like tiktoken. This is essential when building "
+    "RAG prompts with fixed LLM context window constraints."
+)
+
+token_splitter = TokenTextSplitter(
+    chunk_size=15,      # Split every 15 tokens
+    chunk_overlap=3,    # 3 tokens overlap
+    encoding_name="cl100k_base"
+)
+
+chunks = token_splitter.split_text(text)
+for i, chunk in enumerate(chunks, 1):
+    print(f"Token Chunk {i}:\n'{chunk}'\n")
+```
+
+**Output Example:**
+```text
+Token Chunk 1:
+'TokenTextSplitter splits documents strictly based on the token count'
+
+Token Chunk 2:
+' the token count generated by BPE tokenizers like tiktoken. This'
+
+Token Chunk 3:
+' tiktoken. This is essential when building RAG prompts with fixed'
+
+Token Chunk 4:
+' prompts with fixed LLM context window constraints.'
+```
+</details>
+
+---
+
+#### 9. Agentic / LLM-based chunking
+Employs an LLM as an intelligent chunking agent. The model reads the document, reasons about semantic boundaries, and outputs clean, self-contained sections accompanied by synthesized context, summaries, or standalone chunk titles.
+* **Best used for:** Complex, messy, or highly technical documents where rule-based splitters fail (e.g., mixed tables, contracts, research summaries).
+* **Risk:** Substantial inference cost and higher processing latency per document during data ingestion.
+
+<details>
+<summary><b>Code & Example: Agentic/LLM-based Chunking</b></summary>
+
+```python
+from langchain_core.prompts import PromptTemplate
+from langchain_core.output_parsers import JsonOutputParser
+from pydantic import BaseModel, Field
+from typing import List
+
+class ChunkOutput(BaseModel):
+    chunk_title: str = Field(description="Descriptive title for this chunk")
+    chunk_content: str = Field(description="Self-contained chunk text with context preserved")
+
+class DocumentChunks(BaseModel):
+    chunks: List[ChunkOutput]
+
+parser = JsonOutputParser(pydantic_object=DocumentChunks)
+
+prompt = PromptTemplate(
+    template="""You are an expert document chunking agent. Analyze the text below and partition it into 
+self-contained, coherent semantic chunks. Resolve any ambiguous pronouns so each chunk is fully standalone.
+
+Formatting instructions: {format_instructions}
+
+Document Text:
+{text}
+""",
+    input_variables=["text"],
+    partial_variables={"format_instructions": parser.get_format_instructions()},
+)
+
+# Example output schema returned by LLM:
+mock_response = {
+    "chunks": [
+        {
+            "chunk_title": "Quantum Computing Fundamentals",
+            "chunk_content": "Quantum computers utilize qubits capable of superposition and entanglement, solving certain mathematical problems exponentially faster than classical computers."
+        },
+        {
+            "chunk_title": "Cryogenic Hardware Requirements",
+            "chunk_content": "Superconducting quantum processors require dilution refrigerators operating at near absolute zero temperatures (15 millikelvin) to prevent thermal decoherence."
+        }
+    ]
+}
+print(mock_response)
+```
+
+**Output Example:**
+```json
+{
+  "chunks": [
+    {
+      "chunk_title": "Quantum Computing Fundamentals",
+      "chunk_content": "Quantum computers utilize qubits capable of superposition and entanglement, solving certain mathematical problems exponentially faster than classical computers."
+    },
+    {
+      "chunk_title": "Cryogenic Hardware Requirements",
+      "chunk_content": "Superconducting quantum processors require dilution refrigerators operating at near absolute zero temperatures (15 millikelvin) to prevent thermal decoherence."
+    }
+  ]
+}
+```
+</details>
+
+---
+
+#### 10. Hybrid chunking
+Combines multiple chunking techniques sequentially in a multi-stage ingestion pipeline. For example:
+1. **Stage 1 (Structure):** Split document into major sections using `MarkdownHeaderTextSplitter`.
+2. **Stage 2 (Recursive / Token):** If any section exceeds max token length, split it using `RecursiveCharacterTextSplitter` or `TokenTextSplitter` with 15% overlap.
+3. **Stage 3 (Metadata Propagation):** Preserve parent structural headers in the child chunks for filtered vector search.
+* **Best used for:** Enterprise production RAG architectures requiring both structural awareness and strict token boundaries.
+* **Risk:** Slightly more complex ingestion pipeline logic.
+
+<details>
+<summary><b>Code & Example: Hybrid Chunking</b></summary>
+
+```python
+from langchain_text_splitters import MarkdownHeaderTextSplitter, RecursiveCharacterTextSplitter
+
+raw_document = """# System Architecture Guide
+
+## Ingestion Engine
+The ingestion engine extracts raw data from S3 buckets and databases. It handles decompression, OCR for PDFs, and character encoding sanitization. Once cleaned, text streams are prepared for downstream vectorization.
+
+## Retrieval Engine
+The retrieval engine combines dense vector search with BM25 keyword matching. It utilizes a reciprocal rank fusion algorithm to merge candidate sets before cross-encoder re-ranking.
+"""
+
+# Step 1: Structural Split by Headers
+header_splitter = MarkdownHeaderTextSplitter(
+    headers_to_split_on=[("#", "Section"), ("##", "SubSection")],
+    strip_headers=False
+)
+structural_chunks = header_splitter.split_text(raw_document)
+
+# Step 2: Recursive Sub-splitting for token safety
+text_splitter = RecursiveCharacterTextSplitter(
+    chunk_size=120,
+    chunk_overlap=20
+)
+hybrid_chunks = text_splitter.split_documents(structural_chunks)
+
+for i, doc in enumerate(hybrid_chunks, 1):
+    print(f"Hybrid Chunk {i} | Metadata: {doc.metadata}")
+    print(f"Content: {doc.page_content}\n")
+```
+
+**Output Example:**
+```text
+Hybrid Chunk 1 | Metadata: {'Section': 'System Architecture Guide', 'SubSection': 'Ingestion Engine'}
+Content: ## Ingestion Engine
+The ingestion engine extracts raw data from S3 buckets and databases.
+
+Hybrid Chunk 2 | Metadata: {'Section': 'System Architecture Guide', 'SubSection': 'Ingestion Engine'}
+Content: It handles decompression, OCR for PDFs, and character encoding sanitization. Once cleaned, text streams are prepared
+
+Hybrid Chunk 3 | Metadata: {'Section': 'System Architecture Guide', 'SubSection': 'Retrieval Engine'}
+Content: ## Retrieval Engine
+The retrieval engine combines dense vector search with BM25 keyword matching.
+
+Hybrid Chunk 4 | Metadata: {'Section': 'System Architecture Guide', 'SubSection': 'Retrieval Engine'}
+Content: It utilizes a reciprocal rank fusion algorithm to merge candidate sets before cross-encoder re-ranking.
+```
+</details>
 
 <br>
 
